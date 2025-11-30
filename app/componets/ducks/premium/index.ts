@@ -1,0 +1,9 @@
+export { duckPremiumoZero } from "./duckspremium0";
+export { duckPremiumOne } from "./duckspremium1";
+export { duckPremiumTwo } from "./duckspremium2";
+export { duckPremiumThree } from "./duckspremium3";
+export { duckPremiumFour } from "./duckspremium4";
+export { duckPremiumFive } from "./duckspremium5";
+export { duckPremiumSix } from "./duckspremium6";
+export { duckPremiumSeven } from "./duckspremium7";
+export { duckPremiumEight } from "./duckspremium8";

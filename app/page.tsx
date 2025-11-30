@@ -1,65 +1,210 @@
-import Image from "next/image";
+"use client";
+import { useRef, useEffect } from "react";
+import { startingLane } from "./componets/lane";
+import { duckRegular } from "./componets/ducks/duks";
+import {
+  duckPremiumTwo,
+  duckPremiumOne,
+  duckPremiumoZero,
+  duckPremiumThree,
+  duckPremiumFour,
+  duckPremiumFive,
+  duckPremiumSix,
+  duckPremiumSeven,
+  duckPremiumEight,
+} from "./componets/ducks/premium";
 
-export default function Home() {
+type Duck = {
+  x: number;
+  y: number;
+  num: number;
+  amplitude: number;
+  speed: number;
+  phase: number;
+  type:
+    | "regular"
+    | "premium1"
+    | "premium2"
+    | "premium3"
+    | "premium4"
+    | "premium5"
+    | "premium6"
+    | "premium7"
+    | "premium8"
+    | "premium9";
+};
+
+export default function CanvasExample() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current!;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d")!;
+    if (!ctx) return;
+
+    const grassImg = new Image();
+    const waterImg = new Image();
+
+    grassImg.src = "/grass.svg";
+    waterImg.src = "/water.svg";
+
+    const CANVAS_WIDTH = 800;
+    const CANVAS_HEIGHT = 450;
+    const GRASS_HEIGHT = 111;
+    const WATER_HEIGHT = 352;
+
+    // --- Ducks Configuration ---
+    const numberOfDucks = 10; // total ducks
+    const startY = 70;
+    const endY = 370;
+    const startX = 100;
+    const slope = -0.4;
+    const spacingY = (endY - startY) / (numberOfDucks - 1);
+
+    // Example: list of player-selected premium ducks
+    const premiumDucksSelected: Duck["type"][] = [
+      "premium1",
+      "premium2",
+      "premium3",
+      "premium4",
+      "premium5",
+      "premium6",
+      "premium7",
+      "premium8",
+      "premium9",
+    ];
+
+    // Create premium duck objects
+    const premiumDucks: Duck[] = premiumDucksSelected.map((type, i) => ({
+      y: 0,
+      x: 0,
+      num: i + 1,
+      amplitude: 5 + Math.random() * 5,
+      speed: 0.02 + Math.random() * 0.03,
+      phase: Math.random() * Math.PI * 2,
+      type,
+    }));
+
+    // Create remaining regular ducks
+    const regularDucks: Duck[] = Array.from(
+      { length: numberOfDucks - premiumDucks.length },
+      (_, i) => ({
+        y: 0,
+        x: 0,
+        num: premiumDucks.length + i + 1,
+        amplitude: 5 + Math.random() * 5,
+        speed: 0.02 + Math.random() * 0.03,
+        phase: Math.random() * Math.PI * 2,
+        type: "regular",
+      })
+    );
+
+    // Combine and shuffle for random placement
+    const ducks: Duck[] = [...premiumDucks, ...regularDucks].sort(
+      () => Math.random() - 0.5
+    );
+
+    // Assign final Y/X positions for all ducks
+    ducks.forEach((d, i) => {
+      d.y = startY + i * spacingY;
+      d.x = startX + slope * (i * spacingY);
+    });
+
+    const WATER_WIDTH = 1600;
+    let waterX = 0;
+
+    const loop = () => {
+      ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+      // Draw grass
+      ctx.drawImage(grassImg, 0, 0, 1600, GRASS_HEIGHT);
+
+      // Draw water (looped)
+      ctx.drawImage(waterImg, waterX, GRASS_HEIGHT, WATER_WIDTH, WATER_HEIGHT);
+      ctx.drawImage(
+        waterImg,
+        waterX + WATER_WIDTH,
+        GRASS_HEIGHT,
+        WATER_WIDTH,
+        WATER_HEIGHT
+      );
+
+      startingLane(ctx);
+
+      // Draw ducks with wave motion
+      ducks.forEach((d) => {
+        const waveY =
+          d.y + Math.sin((Date.now() / 50) * d.speed + d.phase) * d.amplitude;
+
+        switch (d.type) {
+          case "regular":
+            duckRegular(ctx, d.x, waveY, d.num);
+            break;
+          case "premium1":
+            duckPremiumTwo(ctx, d.x, waveY, d.num);
+            break;
+          case "premium2":
+            duckPremiumOne(ctx, d.x, waveY, d.num);
+            break;
+          case "premium3":
+            duckPremiumoZero(ctx, d.x, waveY, d.num);
+            break;
+          case "premium4":
+            duckPremiumThree(ctx, d.x, waveY, d.num);
+            break;
+          case "premium5":
+            duckPremiumFour(ctx, d.x, waveY, d.num);
+            break;
+          case "premium6":
+            duckPremiumFive(ctx, d.x, waveY, d.num);
+            break;
+          case "premium7":
+            duckPremiumSix(ctx, d.x, waveY, d.num);
+            break;
+          case "premium8":
+            duckPremiumSeven(ctx, d.x, waveY, d.num);
+            break;
+          case "premium9":
+            duckPremiumEight(ctx, d.x, waveY, d.num);
+            break;
+        }
+      });
+
+      // Move water
+      waterX -= 2;
+      if (waterX <= -WATER_WIDTH) waterX = 0;
+
+      requestAnimationFrame(loop);
+    };
+
+    waterImg.onload = () => loop();
+  }, []);
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <div className="w-screen h-screen flex flex-col p-2 bg-white overflow-hidden">
+      {/* Canvas Game Area */}
+      <div className="flex justify-end items-center flex-none">
+        <div className="w-full h-[450px] px-4 pb-4">
+          <div className="w-full h-full text-black bg-white rounded shadow-2xl">
+            Leaderboard
+          </div>
+        </div>
+        <canvas
+          ref={canvasRef}
+          width={800}
+          height={450}
+          className="border-2 bg-[#378098] rounded-t"
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+      </div>
+
+      {/* Leaderboard / Footer */}
+      <div className="w-full h-[280px] flex text-black gap-2 bg-white p-4">
+        <div className="flex-1 rounded shadow-2xl bg-white">1</div>
+        <div className="flex-1 rounded shadow-2xl bg-white">2</div>
+        <div className="flex-1 rounded shadow-2xl bg-white">3</div>
+      </div>
     </div>
   );
 }
