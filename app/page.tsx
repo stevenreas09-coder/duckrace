@@ -141,34 +141,34 @@ export default function CanvasExample() {
 
         switch (d.type) {
           case "regular":
-            duckRegular(ctx, d.x, waveY, d.num);
+            duckRegular(ctx, d.x, waveY);
             break;
           case "premium1":
-            duckPremiumTwo(ctx, d.x, waveY, d.num);
+            duckPremiumTwo(ctx, d.x, waveY);
             break;
           case "premium2":
-            duckPremiumOne(ctx, d.x, waveY, d.num);
+            duckPremiumOne(ctx, d.x, waveY);
             break;
           case "premium3":
-            duckPremiumZero(ctx, d.x, waveY, d.num);
+            duckPremiumZero(ctx, d.x, waveY);
             break;
           case "premium4":
-            duckPremiumThree(ctx, d.x, waveY, d.num);
+            duckPremiumThree(ctx, d.x, waveY);
             break;
           case "premium5":
-            duckPremiumFour(ctx, d.x, waveY, d.num);
+            duckPremiumFour(ctx, d.x, waveY);
             break;
           case "premium6":
-            duckPremiumFive(ctx, d.x, waveY, d.num);
+            duckPremiumFive(ctx, d.x, waveY);
             break;
           case "premium7":
-            duckPremiumSix(ctx, d.x, waveY, d.num);
+            duckPremiumSix(ctx, d.x, waveY);
             break;
           case "premium8":
-            duckPremiumSeven(ctx, d.x, waveY, d.num);
+            duckPremiumSeven(ctx, d.x, waveY);
             break;
           case "premium9":
-            duckPremiumEight(ctx, d.x, waveY, d.num);
+            duckPremiumEight(ctx, d.x, waveY);
             break;
         }
       });

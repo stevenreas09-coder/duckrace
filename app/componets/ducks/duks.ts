@@ -1,8 +1,7 @@
 export function duckRegular(
   ctx: CanvasRenderingContext2D,
   dx: number,
-  dy: number,
-  duckNumber: number
+  dy: number
 ) {
   ctx.save();
   ctx.strokeStyle = "rgba(0,0,0,0)";
@@ -13,6 +12,11 @@ export function duckRegular(
   ctx.translate(dx, dy);
   ctx.scale(0.7017543859649122, 0.7017543859649122);
   ctx.save();
+  ctx.fillStyle = "#FFFDFD";
+  ctx.font = "   15px ''";
+  ctx.beginPath();
+  ctx.moveTo(114, 77.3139);
+  // ... (your full duck paths here)
   ctx.fillStyle = "#FFFDFD";
   ctx.font = "   15px ''";
   ctx.beginPath();
@@ -333,14 +337,5 @@ export function duckRegular(
   ctx.fill();
   ctx.stroke();
   ctx.restore();
-  ctx.restore();
-  // dynamic text
-  ctx.save();
-  ctx.setTransform(1, 0, 0, 1, 0, 0); // reset any scale/translate
-  ctx.fillStyle = "black";
-  ctx.font = "italic bold 12px Arial";
-  ctx.fillText(`${duckNumber}`, dx + 18, dy + 43); // add dx/dy manually
-  ctx.fillStyle = "white";
-  ctx.fillText("playerName", dx + 0, dy + 0); // add dx/dy manually
   ctx.restore();
 }
