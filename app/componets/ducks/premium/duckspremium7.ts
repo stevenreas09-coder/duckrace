@@ -1,7 +1,8 @@
 export function duckPremiumSeven(
   ctx: CanvasRenderingContext2D,
   dx: number,
-  dy: number
+  dy: number,
+  duckNumber: number
 ) {
   ctx.save();
   ctx.strokeStyle = "rgba(0,0,0,0)";
@@ -659,5 +660,12 @@ export function duckPremiumSeven(
   ctx.fill("evenodd");
   ctx.stroke();
   ctx.restore();
+  ctx.restore();
+  // dynamic text
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0); // reset any scale/translate
+  ctx.fillStyle = "black";
+  ctx.font = "italic bold 13px Arial";
+  ctx.fillText(`${duckNumber}`, dx + 26, dy + 64); // add dx/dy manually
   ctx.restore();
 }

@@ -41,13 +41,11 @@ export default function CanvasExample() {
   useEffect(() => {
     const canvas = canvasRef.current!;
     if (!canvas) return;
-
     const ctx = canvas.getContext("2d")!;
     if (!ctx) return;
 
     const grassImg = new Image();
     const waterImg = new Image();
-
     grassImg.src = "/grass.svg";
     waterImg.src = "/water.svg";
 
@@ -55,16 +53,17 @@ export default function CanvasExample() {
     const CANVAS_HEIGHT = 450;
     const GRASS_HEIGHT = 111;
     const WATER_HEIGHT = 352;
+    const WATER_WIDTH = 1600;
+    let waterX = 0;
 
     // --- Ducks Configuration ---
-    const numberOfDucks = 10; // total ducks
+    const numberOfDucks = 50;
     const startY = 70;
     const endY = 370;
     const startX = 100;
     const slope = -0.4;
     const spacingY = (endY - startY) / (numberOfDucks - 1);
 
-    // Example: list of player-selected premium ducks
     const premiumDucksSelected: Duck["type"][] = [
       "premium1",
       "premium2",
@@ -76,53 +75,45 @@ export default function CanvasExample() {
       "premium8",
       "premium9",
     ];
-
-    // Create premium duck objects
     const premiumDucks: Duck[] = premiumDucksSelected.map((type, i) => ({
       y: 0,
       x: 0,
       num: i + 1,
-      amplitude: 5 + Math.random() * 5,
-      speed: 0.02 + Math.random() * 0.03,
+      amplitude: 4 + Math.random() * 6, // 4-10 px
+      speed: 0.3 + Math.random() * 5, // slower 0.3-0.8
       phase: Math.random() * Math.PI * 2,
       type,
     }));
 
-    // Create remaining regular ducks
     const regularDucks: Duck[] = Array.from(
       { length: numberOfDucks - premiumDucks.length },
       (_, i) => ({
         y: 0,
         x: 0,
         num: premiumDucks.length + i + 1,
-        amplitude: 5 + Math.random() * 5,
-        speed: 0.02 + Math.random() * 0.03,
+        amplitude: 4 + Math.random() * 4,
+        speed: 0.3 + Math.random() * 5,
         phase: Math.random() * Math.PI * 2,
         type: "regular",
       })
     );
 
-    // Combine and shuffle for random placement
     const ducks: Duck[] = [...premiumDucks, ...regularDucks].sort(
       () => Math.random() - 0.5
     );
 
-    // Assign final Y/X positions for all ducks
+    // Assign final positions
     ducks.forEach((d, i) => {
       d.y = startY + i * spacingY;
       d.x = startX + slope * (i * spacingY);
     });
 
-    const WATER_WIDTH = 1600;
-    let waterX = 0;
-
-    const loop = () => {
+    // --- Animation loop ---
+    const loop = (time: number) => {
       ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-      // Draw grass
+      // Draw grass and water
       ctx.drawImage(grassImg, 0, 0, 1600, GRASS_HEIGHT);
-
-      // Draw water (looped)
       ctx.drawImage(waterImg, waterX, GRASS_HEIGHT, WATER_WIDTH, WATER_HEIGHT);
       ctx.drawImage(
         waterImg,
@@ -134,41 +125,48 @@ export default function CanvasExample() {
 
       startingLane(ctx);
 
-      // Draw ducks with wave motion
       ducks.forEach((d) => {
+        // Wave motion using slower speed
         const waveY =
-          d.y + Math.sin((Date.now() / 50) * d.speed + d.phase) * d.amplitude;
+          d.y + Math.sin((time / 2000) * d.speed + d.phase) * d.amplitude;
 
+        // Draw duck
         switch (d.type) {
           case "regular":
             duckRegular(ctx, d.x, waveY);
+            // Draw number only for regular ducks
+            ctx.fillStyle = "black";
+            ctx.font = "bold 14px Arial";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(d.num.toString(), d.x + 24, waveY + 39);
             break;
           case "premium1":
-            duckPremiumTwo(ctx, d.x, waveY);
+            duckPremiumTwo(ctx, d.x, waveY, d.num);
             break;
           case "premium2":
-            duckPremiumOne(ctx, d.x, waveY);
+            duckPremiumOne(ctx, d.x, waveY, d.num);
             break;
           case "premium3":
-            duckPremiumZero(ctx, d.x, waveY);
+            duckPremiumZero(ctx, d.x, waveY, d.num);
             break;
           case "premium4":
-            duckPremiumThree(ctx, d.x, waveY);
+            duckPremiumThree(ctx, d.x, waveY, d.num);
             break;
           case "premium5":
-            duckPremiumFour(ctx, d.x, waveY);
+            duckPremiumFour(ctx, d.x, waveY, d.num);
             break;
           case "premium6":
-            duckPremiumFive(ctx, d.x, waveY);
+            duckPremiumFive(ctx, d.x, waveY, d.num);
             break;
           case "premium7":
-            duckPremiumSix(ctx, d.x, waveY);
+            duckPremiumSix(ctx, d.x, waveY, d.num);
             break;
           case "premium8":
-            duckPremiumSeven(ctx, d.x, waveY);
+            duckPremiumSeven(ctx, d.x, waveY, d.num);
             break;
           case "premium9":
-            duckPremiumEight(ctx, d.x, waveY);
+            duckPremiumEight(ctx, d.x, waveY, d.num);
             break;
         }
       });
@@ -180,12 +178,11 @@ export default function CanvasExample() {
       requestAnimationFrame(loop);
     };
 
-    waterImg.onload = () => loop();
+    waterImg.onload = () => requestAnimationFrame(loop);
   }, []);
 
   return (
     <div className="w-screen h-screen flex flex-col p-2 bg-white overflow-hidden">
-      {/* Canvas Game Area */}
       <div className="flex justify-end items-center flex-none">
         <div className="w-full h-[450px] px-4 pb-4">
           <div className="w-full h-full text-black bg-white rounded text-sm shadow-2xl p-2">
@@ -199,8 +196,6 @@ export default function CanvasExample() {
           className="border-2 bg-[#378098] rounded-t"
         />
       </div>
-
-      {/* Leaderboard / Footer */}
       <div className="w-full h-[280px] flex text-black gap-2 bg-white p-4">
         <div className="flex-1 rounded shadow-2xl bg-white">testing</div>
         <div className="flex-1 rounded shadow-2xl bg-white">2</div>

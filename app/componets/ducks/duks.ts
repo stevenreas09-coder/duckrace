@@ -6,19 +6,15 @@ export function duckRegular(
   ctx.save();
   ctx.strokeStyle = "rgba(0,0,0,0)";
   ctx.miterLimit = 4;
-  ctx.font = "15px ''";
   ctx.fillStyle = "rgba(0,0,0,0)";
-  ctx.font = "   15px ''";
   ctx.translate(dx, dy);
   ctx.scale(0.7017543859649122, 0.7017543859649122);
   ctx.save();
   ctx.fillStyle = "#FFFDFD";
-  ctx.font = "   15px ''";
   ctx.beginPath();
   ctx.moveTo(114, 77.3139);
   // ... (your full duck paths here)
   ctx.fillStyle = "#FFFDFD";
-  ctx.font = "   15px ''";
   ctx.beginPath();
   ctx.moveTo(114, 77.3139);
   ctx.bezierCurveTo(113.684, 77.3139, 113.257, 77.3377, 112.788, 77.3647);
@@ -84,7 +80,6 @@ export function duckRegular(
   ctx.save();
   ctx.fillStyle = "rgba(0,0,0,0)";
   ctx.strokeStyle = "white";
-  ctx.font = "   15px ''";
   ctx.beginPath();
   ctx.moveTo(43.2042, 77.7363);
   ctx.bezierCurveTo(41.5334, 76.195, 39.5996, 76.7072, 36.0668, 77.7363);
@@ -145,7 +140,6 @@ export function duckRegular(
   ctx.restore();
   ctx.save();
   ctx.fillStyle = "#FFFDFD";
-  ctx.font = "   15px ''";
   ctx.beginPath();
   ctx.moveTo(47.3006, 40.8156);
   ctx.lineTo(22.9131, 41.5238);
@@ -157,7 +151,6 @@ export function duckRegular(
   ctx.restore();
   ctx.save();
   ctx.fillStyle = "#E0BD14";
-  ctx.font = "   15px ''";
   ctx.beginPath();
   ctx.moveTo(23.5905, 79.7673);
   ctx.bezierCurveTo(45.2909, 82.5816, 59.1726, 82.2345, 85.5753, 79.7673);
@@ -179,7 +172,6 @@ export function duckRegular(
   ctx.restore();
   ctx.save();
   ctx.fillStyle = "#FF691E";
-  ctx.font = "   15px ''";
   ctx.beginPath();
   ctx.moveTo(90.3173, 24.1716);
   ctx.bezierCurveTo(89.7397, 23.4281, 92.4517, 20.662, 92.3496, 18.5058);
@@ -195,7 +187,6 @@ export function duckRegular(
   ctx.restore();
   ctx.save();
   ctx.fillStyle = "#FF691E";
-  ctx.font = "   15px ''";
   ctx.beginPath();
   ctx.moveTo(83.8817, 32.3162);
   ctx.bezierCurveTo(94.2224, 28.5252, 94.851, 26.8055, 90.3173, 24.1716);
@@ -210,7 +201,6 @@ export function duckRegular(
   ctx.fillStyle = "rgba(0,0,0,0)";
   ctx.strokeStyle = "black";
   ctx.lineWidth = 1.5;
-  ctx.font = "   15px ''";
   ctx.beginPath();
   ctx.moveTo(90.3173, 24.1716);
   ctx.bezierCurveTo(94.851, 26.8055, 94.2224, 28.5252, 83.8817, 32.3162);
@@ -249,7 +239,6 @@ export function duckRegular(
   ctx.fillStyle = "#D9D9D9";
   ctx.strokeStyle = "black";
   ctx.lineWidth = 1.5;
-  ctx.font = "   15px ''";
   ctx.beginPath();
   ctx.moveTo(71.6948, 7.87402);
   ctx.bezierCurveTo(73.9368, 7.87426, 76.0249, 10.2246, 76.0249, 13.498);
@@ -262,7 +251,6 @@ export function duckRegular(
   ctx.restore();
   ctx.save();
   ctx.fillStyle = "black";
-  ctx.font = "   15px ''";
   ctx.beginPath();
   ctx.moveTo(74.743, 13.498);
   ctx.bezierCurveTo(74.743, 15.4537, 73.6814, 17.0392, 72.372, 17.0392);
@@ -275,7 +263,6 @@ export function duckRegular(
   ctx.restore();
   ctx.save();
   ctx.fillStyle = "#D9D9D9";
-  ctx.font = "   15px ''";
   ctx.beginPath();
   ctx.moveTo(73.388029, 12.7898);
   ctx.bezierCurveTo(
@@ -316,7 +303,6 @@ export function duckRegular(
   ctx.restore();
   ctx.save();
   ctx.fillStyle = "#479FBB";
-  ctx.font = "   15px ''";
   ctx.beginPath();
   ctx.moveTo(29.5974, 77.2499);
   ctx.bezierCurveTo(37.8939, 73.3774, 41.8096, 74.4565, 48.5974, 77.2499);
@@ -337,5 +323,5 @@ export function duckRegular(
   ctx.fill();
   ctx.stroke();
   ctx.restore();
-  ctx.restore();
+  ctx.restore(); // final restore for translate/scale
 }
