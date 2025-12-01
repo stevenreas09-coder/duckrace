@@ -338,7 +338,9 @@ export function duckRegular(
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0); // reset any scale/translate
   ctx.fillStyle = "black";
-  ctx.font = "italic bold 13px Arial";
+  ctx.font = "italic bold 12px Arial";
   ctx.fillText(`${duckNumber}`, dx + 18, dy + 43); // add dx/dy manually
+  ctx.fillStyle = "white";
+  ctx.fillText("playerName", dx + 0, dy + 0); // add dx/dy manually
   ctx.restore();
 }

@@ -1,4 +1,4 @@
-export { duckPremiumoZero } from "./duckspremium0";
+export { duckPremiumZero } from "./duckspremium0";
 export { duckPremiumOne } from "./duckspremium1";
 export { duckPremiumTwo } from "./duckspremium2";
 export { duckPremiumThree } from "./duckspremium3";

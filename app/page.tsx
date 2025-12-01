@@ -5,7 +5,7 @@ import { duckRegular } from "./componets/ducks/duks";
 import {
   duckPremiumTwo,
   duckPremiumOne,
-  duckPremiumoZero,
+  duckPremiumZero,
   duckPremiumThree,
   duckPremiumFour,
   duckPremiumFive,
@@ -13,6 +13,7 @@ import {
   duckPremiumSeven,
   duckPremiumEight,
 } from "./componets/ducks/premium";
+import LiveFeedTesting from "./api/component/liveFeedsTesting";
 
 type Duck = {
   x: number;
@@ -149,7 +150,7 @@ export default function CanvasExample() {
             duckPremiumOne(ctx, d.x, waveY, d.num);
             break;
           case "premium3":
-            duckPremiumoZero(ctx, d.x, waveY, d.num);
+            duckPremiumZero(ctx, d.x, waveY, d.num);
             break;
           case "premium4":
             duckPremiumThree(ctx, d.x, waveY, d.num);
@@ -187,8 +188,8 @@ export default function CanvasExample() {
       {/* Canvas Game Area */}
       <div className="flex justify-end items-center flex-none">
         <div className="w-full h-[450px] px-4 pb-4">
-          <div className="w-full h-full text-black bg-white rounded shadow-2xl">
-            Leaderboard
+          <div className="w-full h-full text-black bg-white rounded text-sm shadow-2xl p-2">
+            <LiveFeedTesting />
           </div>
         </div>
         <canvas
@@ -201,7 +202,7 @@ export default function CanvasExample() {
 
       {/* Leaderboard / Footer */}
       <div className="w-full h-[280px] flex text-black gap-2 bg-white p-4">
-        <div className="flex-1 rounded shadow-2xl bg-white">1</div>
+        <div className="flex-1 rounded shadow-2xl bg-white">testing</div>
         <div className="flex-1 rounded shadow-2xl bg-white">2</div>
         <div className="flex-1 rounded shadow-2xl bg-white">3</div>
       </div>

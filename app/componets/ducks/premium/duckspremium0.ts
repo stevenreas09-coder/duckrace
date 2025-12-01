@@ -1,4 +1,4 @@
-export function duckPremiumoZero(
+export function duckPremiumZero(
   ctx: CanvasRenderingContext2D,
   dx: number,
   dy: number,
