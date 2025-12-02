@@ -1,6 +1,7 @@
 "use client";
 import { useRef, useEffect, useState } from "react";
 import { startingLane } from "./componets/lane";
+import { FinishLane } from "./componets/finishlane";
 import { duckRegular } from "./componets/ducks/duks";
 import {
   duckPremiumTwo,
@@ -254,9 +255,13 @@ export default function CanvasExample() {
         WATER_WIDTH,
         WATER_HEIGHT
       );
+      /**   x = 80, // move left/right
+         y = 125, // move up/down
+         size = 1 // scale size */
+      // Animate startingLane during countdown and return after race
 
       startingLane(ctx);
-
+      FinishLane(ctx, 800, 110, 1.5);
       /** Start race after countdown */
       if (!raceStartedRef.current && countdownRef.current === 0) {
         startRace(time);

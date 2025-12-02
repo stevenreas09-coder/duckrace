@@ -1,5 +1,3 @@
-"use client";
-
 export function startingLane(
   ctx: CanvasRenderingContext2D,
   x = 80, // move left/right
