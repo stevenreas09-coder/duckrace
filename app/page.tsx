@@ -44,20 +44,22 @@ export default function CanvasExample() {
     const ctx = canvas.getContext("2d")!;
     if (!ctx) return;
 
+    const CANVAS_WIDTH = 800;
+    const CANVAS_HEIGHT = 450;
+
+    // --- Images ---
     const grassImg = new Image();
     const waterImg = new Image();
     grassImg.src = "/grass.svg";
     waterImg.src = "/water.svg";
 
-    const CANVAS_WIDTH = 800;
-    const CANVAS_HEIGHT = 450;
     const GRASS_HEIGHT = 111;
     const WATER_HEIGHT = 352;
     const WATER_WIDTH = 1600;
     let waterX = 0;
 
-    // --- Ducks Configuration ---
-    const numberOfDucks = 50;
+    // --- Ducks Config ---
+    const numberOfDucks = 10;
     const startY = 70;
     const endY = 370;
     const startX = 100;
@@ -75,12 +77,13 @@ export default function CanvasExample() {
       "premium8",
       "premium9",
     ];
+
     const premiumDucks: Duck[] = premiumDucksSelected.map((type, i) => ({
       y: 0,
       x: 0,
       num: i + 1,
-      amplitude: 4 + Math.random() * 6, // 4-10 px
-      speed: 0.3 + Math.random() * 5, // slower 0.3-0.8
+      amplitude: 4 + Math.random() * 6,
+      speed: 0.3 + Math.random() * 3,
       phase: Math.random() * Math.PI * 2,
       type,
     }));
@@ -92,7 +95,7 @@ export default function CanvasExample() {
         x: 0,
         num: premiumDucks.length + i + 1,
         amplitude: 4 + Math.random() * 4,
-        speed: 0.3 + Math.random() * 5,
+        speed: 0.3 + Math.random() * 3,
         phase: Math.random() * Math.PI * 2,
         type: "regular",
       })
@@ -102,13 +105,76 @@ export default function CanvasExample() {
       () => Math.random() - 0.5
     );
 
-    // Assign final positions
     ducks.forEach((d, i) => {
       d.y = startY + i * spacingY;
       d.x = startX + slope * (i * spacingY);
     });
 
-    // --- Animation loop ---
+    // --- Pre-render premium ducks with numbers ---
+    const duckCache = new Map<string, HTMLCanvasElement>();
+    const createDuckWithNumber = (type: Duck["type"], num: number) => {
+      const offCanvas = document.createElement("canvas");
+      offCanvas.width = 150;
+      offCanvas.height = 150;
+      const offCtx = offCanvas.getContext("2d")!;
+      switch (type) {
+        case "premium1":
+          duckPremiumTwo(offCtx, 0, 0, num);
+          break;
+        case "premium2":
+          duckPremiumOne(offCtx, 0, 0, num);
+          break;
+        case "premium3":
+          duckPremiumZero(offCtx, 0, 0, num);
+          break;
+        case "premium4":
+          duckPremiumThree(offCtx, 0, 0, num);
+          break;
+        case "premium5":
+          duckPremiumFour(offCtx, 0, 0, num);
+          break;
+        case "premium6":
+          duckPremiumFive(offCtx, 0, 0, num);
+          break;
+        case "premium7":
+          duckPremiumSix(offCtx, 0, 0, num);
+          break;
+        case "premium8":
+          duckPremiumSeven(offCtx, 0, 0, num);
+          break;
+        case "premium9":
+          duckPremiumEight(offCtx, 0, 0, num);
+          break;
+      }
+      return offCanvas;
+    };
+
+    ducks.forEach((d) => {
+      if (d.type !== "regular") {
+        duckCache.set(
+          `${d.type}_${d.num}`,
+          createDuckWithNumber(d.type, d.num)
+        );
+      }
+    });
+
+    // --- Pre-render regular ducks with numbers ---
+    const regularDuckCache = new Map<Duck, HTMLCanvasElement>();
+    regularDucks.forEach((duck) => {
+      const offCanvas = document.createElement("canvas");
+      offCanvas.width = 100;
+      offCanvas.height = 100;
+      const offCtx = offCanvas.getContext("2d")!;
+      duckRegular(offCtx, 0, 0);
+      offCtx.fillStyle = "black";
+      offCtx.font = "bold 14px Arial";
+      offCtx.textAlign = "center";
+      offCtx.textBaseline = "middle";
+      offCtx.fillText(duck.num.toString(), 24, 39);
+      regularDuckCache.set(duck, offCanvas);
+    });
+
+    // --- Animation Loop ---
     const loop = (time: number) => {
       ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
@@ -126,48 +192,15 @@ export default function CanvasExample() {
       startingLane(ctx);
 
       ducks.forEach((d) => {
-        // Wave motion using slower speed
         const waveY =
           d.y + Math.sin((time / 2000) * d.speed + d.phase) * d.amplitude;
 
-        // Draw duck
-        switch (d.type) {
-          case "regular":
-            duckRegular(ctx, d.x, waveY);
-            // Draw number only for regular ducks
-            ctx.fillStyle = "black";
-            ctx.font = "bold 14px Arial";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText(d.num.toString(), d.x + 24, waveY + 39);
-            break;
-          case "premium1":
-            duckPremiumTwo(ctx, d.x, waveY, d.num);
-            break;
-          case "premium2":
-            duckPremiumOne(ctx, d.x, waveY, d.num);
-            break;
-          case "premium3":
-            duckPremiumZero(ctx, d.x, waveY, d.num);
-            break;
-          case "premium4":
-            duckPremiumThree(ctx, d.x, waveY, d.num);
-            break;
-          case "premium5":
-            duckPremiumFour(ctx, d.x, waveY, d.num);
-            break;
-          case "premium6":
-            duckPremiumFive(ctx, d.x, waveY, d.num);
-            break;
-          case "premium7":
-            duckPremiumSix(ctx, d.x, waveY, d.num);
-            break;
-          case "premium8":
-            duckPremiumSeven(ctx, d.x, waveY, d.num);
-            break;
-          case "premium9":
-            duckPremiumEight(ctx, d.x, waveY, d.num);
-            break;
+        if (d.type === "regular") {
+          const offCanvas = regularDuckCache.get(d);
+          if (offCanvas) ctx.drawImage(offCanvas, d.x, waveY);
+        } else {
+          const offCanvas = duckCache.get(`${d.type}_${d.num}`);
+          if (offCanvas) ctx.drawImage(offCanvas, d.x, waveY);
         }
       });
 

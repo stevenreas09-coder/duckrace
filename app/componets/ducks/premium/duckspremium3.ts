@@ -411,7 +411,7 @@ export function duckPremiumThree(
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0); // reset any scale/translate
   ctx.fillStyle = "black";
-  ctx.font = "italic bold 13px Arial";
-  ctx.fillText(`${duckNumber}`, dx + 24, dy + 47); // add dx/dy manually
+  ctx.font = "bold 14px Arial";
+  ctx.fillText(`${duckNumber}`, dx + 22, dy + 49); // add dx/dy manually
   ctx.restore();
 }
