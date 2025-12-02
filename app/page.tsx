@@ -48,6 +48,9 @@ export default function CanvasExample() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const startingLaneXRef = useRef(80); // initial x
   const grassXRef = useRef(0); // track grass offset
+  const finishLaneXRef = useRef(800); // current X position
+  const finishLaneDirectionRef = useRef(0); // 0 = not moving, -1 = moving left
+  const finishLaneMovedRef = useRef(0);
 
   const [countdown, setCountdown] = useState(60);
   const countdownRef = useRef(countdown);
@@ -82,7 +85,7 @@ export default function CanvasExample() {
      *  DUCK GENERATION
      * --------------------------- */
 
-    const numberOfDucks = 20;
+    const numberOfDucks = 50;
     const startY = 70;
     const endY = 370;
     const startX = 100;
@@ -285,7 +288,47 @@ export default function CanvasExample() {
 
       startingLane(ctx, startingLaneXRef.current, 125);
 
-      FinishLane(ctx, 800, 110, 1.5);
+      // finish lane logic----------------------------------------------------------
+      const FINISH_LANE_MOVE_DISTANCE = 900;
+      const FINISH_LANE_SPEED = 3;
+      // 3000 is advance
+      // Start movement 5 sec *later* than the old trigger
+      const FINISH_LANE_DELAY = 3000;
+
+      if (raceStartedRef.current) {
+        const now = time;
+        const elapsed = now - raceStartTime;
+
+        // Trigger movement
+        if (
+          elapsed >= RACE_DURATION - FINISH_LANE_DELAY &&
+          finishLaneDirectionRef.current === 0
+        ) {
+          finishLaneDirectionRef.current = -1;
+        }
+
+        // Perform movement
+        if (finishLaneDirectionRef.current !== 0) {
+          finishLaneXRef.current +=
+            finishLaneDirectionRef.current * FINISH_LANE_SPEED;
+
+          finishLaneMovedRef.current += FINISH_LANE_SPEED;
+
+          if (finishLaneMovedRef.current >= FINISH_LANE_MOVE_DISTANCE) {
+            finishLaneDirectionRef.current = 0;
+          }
+        }
+      }
+
+      // Reset for next race
+      if (!raceStartedRef.current && finishLaneXRef.current !== 800) {
+        finishLaneXRef.current = 800;
+        finishLaneMovedRef.current = 0;
+        finishLaneDirectionRef.current = 0;
+      }
+
+      FinishLane(ctx, finishLaneXRef.current, 110, 1.5);
+
       /** Start race after countdown */
       if (!raceStartedRef.current && countdownRef.current === 0) {
         startRace(time);
@@ -303,7 +346,19 @@ export default function CanvasExample() {
 
         ducks.forEach((d, i) => {
           if (winner && d !== winner) {
-            d.x = -200; // hide non-winning ducks
+            const hideTarget = -300;
+            let slide = 1.5; // base speed
+
+            // slow down when close
+            if (d.x < 50) slide = 1;
+            if (d.x < -50) slide = 0.5;
+
+            if (d.x > hideTarget) {
+              d.x -= slide;
+            } else {
+              d.x = hideTarget;
+            }
+
             return;
           }
 
