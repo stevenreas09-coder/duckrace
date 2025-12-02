@@ -39,6 +39,8 @@ type Duck = {
   jitterPhase?: number; // ← Add this line
   sprintSeed?: number;
   backwardSeed?: number;
+  isSprinting?: boolean; // new: flag for sprint state
+  sprintStartTime?: number; // new: when sprint started
 };
 
 export default function CanvasExample() {
@@ -263,9 +265,6 @@ export default function CanvasExample() {
       /** --------------------------
        *  RACE MOVEMENT (UPDATED)
        * --------------------------- */
-      /** --------------------------
-       *  RACE MOVEMENT (REFINED)
-       * --------------------------- */
       if (raceStartedRef.current) {
         const now = time;
         const elapsed = now - raceStartTime;
@@ -285,9 +284,25 @@ export default function CanvasExample() {
           if (d.jitterPhase === undefined) d.jitterPhase = Math.random() * 1000;
           if (d.sprintSeed === undefined) d.sprintSeed = Math.random() * 10;
           if (d.backwardSeed === undefined) d.backwardSeed = Math.random() * 5;
+          if (d.isSprinting === undefined) d.isSprinting = false; // initialize sprint flag
+          if (d.sprintStartTime === undefined) d.sprintStartTime = 0; // initialize start time
 
-          // Base forward movement (increased base speed for realism)
-          const baseForward = d.speedFactor * 0.5 * dt;
+          // Handle sprint logic
+          if (!d.isSprinting && Math.random() < 0.001) {
+            // ~0.05% chance per frame to start sprint (adjust for frequency)
+            d.isSprinting = true;
+            d.sprintStartTime = now;
+          }
+          if (d.isSprinting && now - d.sprintStartTime >= 10000) {
+            // 10 seconds
+            d.isSprinting = false;
+          }
+
+          // Base forward movement (boosted during sprint)
+          let baseForward = d.speedFactor * 0.5 * dt;
+          if (d.isSprinting) {
+            baseForward *= 3; // 3x speed during sprint
+          }
 
           // Smooth vertical bobbing (unchanged)
           d.jitterPhase += 0.02;
@@ -339,6 +354,8 @@ export default function CanvasExample() {
             d.jitterPhase = undefined;
             d.sprintSeed = undefined;
             d.backwardSeed = undefined;
+            d.isSprinting = undefined; // reset sprint flag
+            d.sprintStartTime = undefined; // reset start time
           });
           winner = null;
           raceStartedRef.current = false;
