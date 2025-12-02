@@ -46,6 +46,8 @@ type Duck = {
 
 export default function CanvasExample() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const startingLaneXRef = useRef(80); // initial x
+  const grassXRef = useRef(0); // track grass offset
 
   const [countdown, setCountdown] = useState(60);
   const countdownRef = useRef(countdown);
@@ -220,6 +222,7 @@ export default function CanvasExample() {
     const startCountdown = () => {
       clearInterval(countdownInterval);
       setCountdown(5);
+      startingLaneXRef.current = 80;
 
       countdownInterval = window.setInterval(() => {
         setCountdown((prev) => {
@@ -246,7 +249,16 @@ export default function CanvasExample() {
       ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
       /** Background */
-      ctx.drawImage(grassImg, 0, 0, 1600, GRASS_HEIGHT);
+      // Move grass only if race started
+      if (raceStartedRef.current) {
+        const grassSpeed = 0.5; // pixels per frame
+        grassXRef.current -= grassSpeed; // move left
+        if (grassXRef.current <= -1600) grassXRef.current = 0; // loop back
+      }
+
+      // Draw grass twice for seamless loop
+      ctx.drawImage(grassImg, grassXRef.current, 0, 1600, GRASS_HEIGHT);
+      ctx.drawImage(grassImg, grassXRef.current + 1600, 0, 1600, GRASS_HEIGHT);
       ctx.drawImage(waterImg, waterX, GRASS_HEIGHT, WATER_WIDTH, WATER_HEIGHT);
       ctx.drawImage(
         waterImg,
@@ -260,7 +272,19 @@ export default function CanvasExample() {
          size = 1 // scale size */
       // Animate startingLane during countdown and return after race
 
-      startingLane(ctx);
+      const targetX = -500; // x to move to after countdown
+      const laneSpeed = 1.5; // pixels per frame
+      // Check if countdown finished
+      if (countdownRef.current === 0) {
+        if (startingLaneXRef.current > targetX) {
+          startingLaneXRef.current -= laneSpeed;
+          if (startingLaneXRef.current < targetX)
+            startingLaneXRef.current = targetX;
+        }
+      }
+
+      startingLane(ctx, startingLaneXRef.current, 125);
+
       FinishLane(ctx, 800, 110, 1.5);
       /** Start race after countdown */
       if (!raceStartedRef.current && countdownRef.current === 0) {
