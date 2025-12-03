@@ -51,6 +51,7 @@ export default function CanvasExample() {
   const finishLaneXRef = useRef(800); // current X position
   const finishLaneDirectionRef = useRef(0); // 0 = not moving, -1 = moving left
   const finishLaneMovedRef = useRef(0);
+  const finishLaneResetOnceRef = useRef(false);
 
   const [countdown, setCountdown] = useState(60);
   const countdownRef = useRef(countdown);
@@ -288,18 +289,41 @@ export default function CanvasExample() {
 
       startingLane(ctx, startingLaneXRef.current, 125);
 
-      // finish lane logic----------------------------------------------------------
+      /** ---------------------------------------------------
+       * FINISH LANE — FIXED (no glitch, no looping)
+       * --------------------------------------------------- */
+
+      // reset finish lane ONLY when countdown restarts (not every frame)
+      const resetFinishLane = () => {
+        finishLaneXRef.current = 800;
+        finishLaneMovedRef.current = 0;
+        finishLaneDirectionRef.current = 0;
+        finishLaneResetOnceRef.current = true; // mark as done
+      };
+
+      // detect countdown restart
+      if (!raceStartedRef.current) {
+        if (countdownRef.current === 5 && !finishLaneResetOnceRef.current) {
+          resetFinishLane(); // run only once
+        }
+
+        // when countdown finishes, allow reset again in the next cycle
+        if (countdownRef.current !== 5) {
+          finishLaneResetOnceRef.current = false;
+        }
+      }
+
+      // ===== Movement logic =====
+
       const FINISH_LANE_MOVE_DISTANCE = 900;
-      const FINISH_LANE_SPEED = 3;
-      // 3000 is advance
-      // Start movement 5 sec *later* than the old trigger
-      const FINISH_LANE_DELAY = 3000;
+      const FINISH_LANE_SPEED = 3; // pixels per frame
+      const FINISH_LANE_DELAY = 3000; // start 3 sec before race end
 
       if (raceStartedRef.current) {
         const now = time;
         const elapsed = now - raceStartTime;
 
-        // Trigger movement
+        // trigger movement ONCE
         if (
           elapsed >= RACE_DURATION - FINISH_LANE_DELAY &&
           finishLaneDirectionRef.current === 0
@@ -307,26 +331,19 @@ export default function CanvasExample() {
           finishLaneDirectionRef.current = -1;
         }
 
-        // Perform movement
-        if (finishLaneDirectionRef.current !== 0) {
-          finishLaneXRef.current +=
-            finishLaneDirectionRef.current * FINISH_LANE_SPEED;
-
+        // move while active
+        if (finishLaneDirectionRef.current === -1) {
+          finishLaneXRef.current -= FINISH_LANE_SPEED;
           finishLaneMovedRef.current += FINISH_LANE_SPEED;
 
+          // stop after full travel
           if (finishLaneMovedRef.current >= FINISH_LANE_MOVE_DISTANCE) {
             finishLaneDirectionRef.current = 0;
           }
         }
       }
 
-      // Reset for next race
-      if (!raceStartedRef.current && finishLaneXRef.current !== 800) {
-        finishLaneXRef.current = 800;
-        finishLaneMovedRef.current = 0;
-        finishLaneDirectionRef.current = 0;
-      }
-
+      // draw lane
       FinishLane(ctx, finishLaneXRef.current, 110, 1.5);
 
       /** Start race after countdown */
@@ -340,19 +357,22 @@ export default function CanvasExample() {
       if (raceStartedRef.current) {
         const now = time;
         const elapsed = now - raceStartTime;
-        const p = Math.min(elapsed / RACE_DURATION, 1);
+        const timeProgress = Math.min(elapsed / RACE_DURATION, 1); // 0 → 1
         const FINISH_DISTANCE = FINISH_LINE;
         const smoothing = 0.15; // increased for smoother movement
 
         ducks.forEach((d, i) => {
           if (winner && d !== winner) {
             const hideTarget = -300;
-            let slide = 1.5; // base speed
 
-            // slow down when close
-            if (d.x < 50) slide = 1;
-            if (d.x < -50) slide = 0.5;
+            // Distance to target
+            const distance = d.x - hideTarget;
 
+            // Smooth speed curve based on distance
+            let slide = 0.5 + Math.min(distance / 100, 1) * 1.2;
+            // slide ranges from 0.5 → 1.7 gradually
+
+            // Apply movement
             if (d.x > hideTarget) {
               d.x -= slide;
             } else {
@@ -382,12 +402,6 @@ export default function CanvasExample() {
             d.isSprinting = false;
           }
 
-          // Base forward movement (boosted during sprint)
-          let baseForward = d.speedFactor * 0.5 * dt;
-          if (d.isSprinting) {
-            baseForward *= 3; // 3x speed during sprint
-          }
-
           // Smooth vertical bobbing (unchanged)
           d.jitterPhase += 0.02;
           const jitter = Math.sin(d.jitterPhase) * 0.1 * dt;
@@ -406,18 +420,43 @@ export default function CanvasExample() {
           const backward = baseBackward + randomBackward;
 
           // Target position (allows ducks to move backward, creating gaps and off-screen movement)
-          let targetX = d.x + baseForward + sprint - backward;
+          let targetX = d.x + sprint - backward;
 
           // Apply low-pass filter for smooth movement
           d.x += (targetX - d.x) * smoothing;
+          // if the ducks reaches 600 pixel move backward and other duck move normally -------
+          if (d.x >= FINISH_DISTANCE) {
+            // Only backward movement after crossing the finish distance
+            const baseBackward =
+              Math.sin(elapsed / 5000 + d.backwardSeed) * 0.3 * dt;
+            const randomBackward =
+              Math.random() < 0.002 ? (1 + Math.random() * 2) * dt : 0;
+            const backward = baseBackward + randomBackward;
 
-          // No clamping: allows ducks to create gaps, overtake, and move off-screen (negative x)
-          // Ducks can naturally fall behind or sprint ahead
+            // Normal forward + sprint logic
+            let targetX = d.x + sprint - backward;
+            d.x += (targetX - d.x) * smoothing;
+          } else {
+            // Normal race logic for ducks that haven't reached the distance
+            // Initialize per-duck params (only once)
+            if (d.speedFactor === undefined)
+              d.speedFactor = 0.1 + Math.random() * 0.9;
+            if (d.jitterPhase === undefined)
+              d.jitterPhase = Math.random() * 1000;
+            if (d.sprintSeed === undefined) d.sprintSeed = Math.random() * 10;
+            if (d.backwardSeed === undefined)
+              d.backwardSeed = Math.random() * 5;
+            if (d.isSprinting === undefined) d.isSprinting = false;
+            if (d.sprintStartTime === undefined) d.sprintStartTime = 0;
 
-          // Detect winner (first to reach finish)
-          if (!winner && d.x >= FINISH_DISTANCE) {
-            winner = d;
-            winnerDisplayStart = now;
+            // Handle sprint logic
+            if (!d.isSprinting && Math.random() < 0.001) {
+              d.isSprinting = true;
+              d.sprintStartTime = now;
+            }
+            if (d.isSprinting && now - d.sprintStartTime >= 10000) {
+              d.isSprinting = false;
+            }
           }
         });
 
@@ -498,7 +537,7 @@ export default function CanvasExample() {
 
         <canvas
           ref={canvasRef}
-          width={800}
+          width={900}
           height={450}
           className="border-2 bg-[#378098] rounded-t"
         />
