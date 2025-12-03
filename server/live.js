@@ -63,6 +63,25 @@ liveConnection.on("gift", (data) => {
     timestamp: new Date().toISOString(),
   });
 });
+// Listen for new users joining the room
+liveConnection.on("roomUser", (data) => {
+  // data.users is sometimes an array of user objects
+  if (data.users && data.users.length > 0) {
+    data.users.forEach((user) => {
+      io.emit("viewerJoined", {
+        username: user.uniqueId,
+        profilePic: user.profilePic,
+        timestamp: new Date().toISOString(),
+      });
+    });
+  }
+
+  // Emit total viewers count too
+  io.emit("viewers", {
+    viewerCount: data.viewerCount,
+    timestamp: new Date().toISOString(),
+  });
+});
 
 // Start the Socket.IO server
 server.listen(PORT, () => {

@@ -16,6 +16,20 @@ import {
 } from "./componets/ducks/premium";
 import LiveFeedTesting from "./api/component/liveFeedsTesting";
 
+interface Like {
+  userId: string;
+  username: string;
+  profilePic: string;
+  timestamp: string;
+}
+
+interface View {
+  userId: string;
+  username: string;
+  profilePic: string;
+  timestamp: string;
+}
+
 type Duck = {
   x: number;
   y: number;
@@ -65,6 +79,99 @@ export default function CanvasExample() {
   const raceStartedRef = useRef(false);
   const lastTimeRef = useRef(0);
 
+  const [likes, setLikes] = useState<Like[]>([]);
+  const [viewers, setViewers] = useState<View[]>([]);
+  const viewersRef = useRef<View[]>([]);
+  const likesRef = useRef<Like[]>([]);
+  const countdownStartedRef = useRef(false);
+  const countdownIntervalRef = useRef<number | undefined>(undefined);
+
+  const randomNames = [
+    "Alpha",
+    "Bravo",
+    "Charlie",
+    "Delta",
+    "Echo",
+    "Zeta",
+    "Omega",
+    "Nova",
+    "Pixel",
+    "Raven",
+  ];
+
+  // Keep refs updated
+  useEffect(() => {
+    viewersRef.current = viewers;
+  }, [viewers]);
+  useEffect(() => {
+    likesRef.current = likes;
+  }, [likes]);
+
+  // Countdown
+  const startCountdown = () => {
+    setCountdown(60);
+    startingLaneXRef.current = 80;
+
+    if (!countdownIntervalRef.current) {
+      countdownIntervalRef.current = window.setInterval(() => {
+        setCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(countdownIntervalRef.current);
+            countdownIntervalRef.current = undefined;
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+  };
+
+  useEffect(() => {
+    if (
+      !countdownStartedRef.current &&
+      viewers.length >= 20 &&
+      likes.length >= 20
+    ) {
+      countdownStartedRef.current = true;
+      startCountdown();
+    }
+  }, [viewers.length, likes.length]);
+
+  // Fake live data generator
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const timestamp = new Date().toISOString();
+
+      setLikes((prev) =>
+        [
+          {
+            userId: "1",
+            username:
+              randomNames[Math.floor(Math.random() * randomNames.length)],
+            profilePic: "",
+            timestamp,
+          },
+          ...prev,
+        ].slice(0, 50)
+      );
+
+      setViewers((prev) =>
+        [
+          {
+            userId: "2",
+            username:
+              randomNames[Math.floor(Math.random() * randomNames.length)],
+            profilePic: "",
+            timestamp,
+          },
+          ...prev,
+        ].slice(0, 50)
+      );
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -85,7 +192,7 @@ export default function CanvasExample() {
     const WATER_WIDTH = 1600;
     let waterX = 0;
 
-    /** Ducks */
+    /** Ducks setup */
     const numberOfDucks = 50;
     const startY = 70;
     const endY = 370;
@@ -115,7 +222,7 @@ export default function CanvasExample() {
       type,
       speedFactor: 0.9 + Math.random() * 0.05,
       boostApplied: false,
-      boostDelay: Math.random() * 2000 + 1000, // 1-3s delay
+      boostDelay: Math.random() * 2000 + 1000,
     }));
 
     const regularDucks: Duck[] = Array.from(
@@ -135,21 +242,19 @@ export default function CanvasExample() {
     const ducks: Duck[] = [...premiumDucks, ...regularDucks].sort(
       () => Math.random() - 0.5
     );
-
     ducks.forEach((d, i) => {
       d.y = startY + i * spacingY;
       d.x = startX + slope * (i * spacingY);
       d.baseX = d.x;
     });
 
-    /** Duck Images */
+    /** Duck images */
     const duckCache = new Map<string, HTMLCanvasElement>();
     const createDuckWithNumber = (type: Duck["type"], num: number) => {
       const offCanvas = document.createElement("canvas");
       offCanvas.width = 150;
       offCanvas.height = 150;
       const offCtx = offCanvas.getContext("2d")!;
-
       switch (type) {
         case "premium1":
           duckPremiumTwo(offCtx, 0, 0, num);
@@ -179,14 +284,11 @@ export default function CanvasExample() {
           duckPremiumEight(offCtx, 0, 0, num);
           break;
       }
-
       return offCanvas;
     };
-
     premiumDucks.forEach((d) => {
       duckCache.set(`${d.type}_${d.num}`, createDuckWithNumber(d.type, d.num));
     });
-
     const regularDuckCache = new Map<Duck, HTMLCanvasElement>();
     regularDucks.forEach((duck) => {
       const offCanvas = document.createElement("canvas");
@@ -202,7 +304,7 @@ export default function CanvasExample() {
       regularDuckCache.set(duck, offCanvas);
     });
 
-    /** Race */
+    /** Race variables */
     const FINISH_LINE = 600;
     const RACE_DURATION = 60000;
     let raceStartTime = 0;
@@ -214,26 +316,39 @@ export default function CanvasExample() {
       raceStartTime = time;
     };
 
-    let countdownInterval: number;
-    const startCountdown = () => {
-      clearInterval(countdownInterval);
-      setCountdown(5);
-      startingLaneXRef.current = 80;
+    /** Draw usernames using latest refs */
+    const drawUsernames = (ctx: CanvasRenderingContext2D, time: number) => {
+      ducks.forEach((d) => {
+        let username: string;
 
-      countdownInterval = window.setInterval(() => {
-        setCountdown((prev) => {
-          if (prev <= 1) {
-            clearInterval(countdownInterval);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+        if (d.type === "regular") {
+          const index = viewersRef.current.length
+            ? d.num % viewersRef.current.length
+            : 0;
+          username = viewersRef.current[index]?.username ?? "Guest";
+          ctx.fillStyle = "white";
+        } else {
+          const index = likesRef.current.length
+            ? d.num % likesRef.current.length
+            : 0;
+          username = likesRef.current[index]?.username ?? "Guest";
+          ctx.fillStyle = "yellow";
+        }
+
+        const waveY =
+          d.y + Math.sin((time / 4000) * d.speed + d.phase) * d.amplitude;
+
+        ctx.font = "bold 16px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "bottom";
+        ctx.strokeStyle = "black";
+        ctx.lineWidth = 3;
+        ctx.strokeText(username, d.x + 40, waveY - 10);
+        ctx.fillText(username, d.x + 40, waveY - 10);
+      });
     };
 
-    startCountdown();
-
-    /** Main loop */
+    /** Main animation loop */
     const loop = (time: number) => {
       const deltaTime = lastTimeRef.current ? time - lastTimeRef.current : 16;
       lastTimeRef.current = time;
@@ -268,40 +383,6 @@ export default function CanvasExample() {
       }
       startingLane(ctx, startingLaneXRef.current, 125);
 
-      // Finish lane logic
-      const resetFinishLane = () => {
-        finishLaneXRef.current = 800;
-        finishLaneMovedRef.current = 0;
-        finishLaneDirectionRef.current = 0;
-        finishLaneResetOnceRef.current = true;
-      };
-      if (!raceStartedRef.current) {
-        if (countdownRef.current === 5 && !finishLaneResetOnceRef.current)
-          resetFinishLane();
-        if (countdownRef.current !== 5) finishLaneResetOnceRef.current = false;
-      }
-
-      const FINISH_LANE_MOVE_DISTANCE = 900;
-      const FINISH_LANE_SPEED = 3;
-      const FINISH_LANE_DELAY = 3000;
-
-      if (raceStartedRef.current) {
-        const now = time;
-        const elapsed = now - raceStartTime;
-
-        if (
-          elapsed >= RACE_DURATION - FINISH_LANE_DELAY &&
-          finishLaneDirectionRef.current === 0
-        )
-          finishLaneDirectionRef.current = -1;
-        if (finishLaneDirectionRef.current === -1) {
-          finishLaneXRef.current -= FINISH_LANE_SPEED;
-          finishLaneMovedRef.current += FINISH_LANE_SPEED;
-          if (finishLaneMovedRef.current >= FINISH_LANE_MOVE_DISTANCE)
-            finishLaneDirectionRef.current = 0;
-        }
-      }
-
       FinishLane(ctx, finishLaneXRef.current, 110, 1.5);
 
       // Start race
@@ -315,52 +396,13 @@ export default function CanvasExample() {
         const smoothing = 0.15;
 
         ducks.forEach((d) => {
-          if (winner && d !== winner) {
-            const hideTarget = -300;
-            const distance = d.x - hideTarget;
-            let slide = 0.5 + Math.min(distance / 100, 1) * 1.2;
-            if (d.x > hideTarget) d.x -= slide;
-            else d.x = hideTarget;
-            return;
-          }
-
-          // Initialize per-duck
+          // Skip winner hiding logic
           if (!d.speedFactor) d.speedFactor = 0.1 + Math.random() * 0.9;
           if (!d.jitterPhase) d.jitterPhase = Math.random() * 1000;
           if (!d.sprintSeed) d.sprintSeed = Math.random() * 10;
           if (!d.backwardSeed) d.backwardSeed = Math.random() * 5;
           if (d.isSprinting === undefined) d.isSprinting = false;
           if (!d.sprintStartTime) d.sprintStartTime = 0;
-          if (d.boostApplied === undefined) d.boostApplied = false;
-          if (!d.boostDelay) d.boostDelay = Math.random() * 2000 + 1000;
-
-          // Smooth one-time premium boost
-          if (
-            d.type !== "regular" &&
-            !d.boostApplied &&
-            elapsed >= d.boostDelay
-          ) {
-            d.boostApplied = true;
-            d.boostStartTime = now;
-            d.boostDuration = 1500 + Math.random() * 500;
-            d.boostTarget = d.x + 50 + Math.random() * 30;
-          }
-          if (d.boostApplied && d.boostStartTime && d.boostTarget) {
-            const t = Math.min(
-              (now - d.boostStartTime) / (d.boostDuration || 1),
-              1
-            );
-            d.x += (d.boostTarget - d.x) * t;
-            if (t >= 1) delete d.boostTarget;
-          }
-
-          // Sprint/backward
-          if (!d.isSprinting && Math.random() < 0.001) {
-            d.isSprinting = true;
-            d.sprintStartTime = now;
-          }
-          if (d.isSprinting && now - d.sprintStartTime >= 10000)
-            d.isSprinting = false;
 
           d.jitterPhase += 0.02;
           const sprint =
@@ -376,7 +418,6 @@ export default function CanvasExample() {
           d.x += (targetX - d.x) * smoothing;
         });
 
-        // End race
         if (elapsed >= RACE_DURATION && !winner) {
           winner = ducks.reduce((prev, curr) =>
             curr.x > prev.x ? curr : prev
@@ -384,22 +425,9 @@ export default function CanvasExample() {
           winnerDisplayStart = now;
         }
 
-        // Reset race
-        if (winner && now - winnerDisplayStart > 10000) {
+        if (winner && time - winnerDisplayStart > 10000) {
           ducks.forEach((d) => {
             d.x = d.baseX ?? 0;
-            d.finished = false;
-            d.speedFactor = undefined;
-            d.jitterPhase = undefined;
-            d.sprintSeed = undefined;
-            d.backwardSeed = undefined;
-            d.isSprinting = undefined;
-            d.sprintStartTime = undefined;
-            d.boostApplied = undefined;
-            d.boostDelay = undefined;
-            d.boostStartTime = undefined;
-            d.boostDuration = undefined;
-            d.boostTarget = undefined;
           });
           winner = null;
           raceStartedRef.current = false;
@@ -407,7 +435,9 @@ export default function CanvasExample() {
         }
       }
 
-      /** Draw ducks */
+      // Draw usernames and ducks
+      drawUsernames(ctx, time);
+
       const waveOffset = time / 4000;
       ducks.forEach((d) => {
         const waveY =
@@ -421,13 +451,13 @@ export default function CanvasExample() {
         }
       });
 
-      /** Move water */
+      // Water movement
       waterX -= 2;
       if (waterX <= -WATER_WIDTH) waterX = 0;
 
-      /** Countdown */
+      // Countdown display
       if (!raceStartedRef.current) {
-        ctx.fillStyle = "red";
+        ctx.fillStyle = "white";
         ctx.font = "bold 36px Arial";
         ctx.textAlign = "center";
         ctx.fillText(
@@ -442,7 +472,7 @@ export default function CanvasExample() {
 
     waterImg.onload = () => requestAnimationFrame(loop);
 
-    return () => clearInterval(countdownInterval);
+    return () => clearInterval(countdownIntervalRef.current);
   }, []);
 
   return (
@@ -453,7 +483,6 @@ export default function CanvasExample() {
             <LiveFeedTesting />
           </div>
         </div>
-
         <canvas
           ref={canvasRef}
           width={800}
@@ -461,7 +490,6 @@ export default function CanvasExample() {
           className="border-2 bg-[#378098] rounded-t"
         />
       </div>
-
       <div className="w-full h-[280px] flex text-black gap-2 bg-white p-4">
         <div className="flex-1 rounded shadow-2xl bg-white">testing</div>
         <div className="flex-1 rounded shadow-2xl bg-white">2</div>

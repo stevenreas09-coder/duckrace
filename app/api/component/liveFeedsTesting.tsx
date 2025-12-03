@@ -76,7 +76,7 @@ export default function LiveFeedTesting() {
             timestamp,
           },
           ...prev,
-        ].slice(0, 5)
+        ].slice(0, 20)
       );
     }, 2000); // every 2 seconds
 
