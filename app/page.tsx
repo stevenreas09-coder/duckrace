@@ -14,21 +14,6 @@ import {
   duckPremiumSeven,
   duckPremiumEight,
 } from "./componets/ducks/premium";
-import LiveFeedTesting from "./api/component/liveFeedsTesting";
-
-interface Like {
-  userId: string;
-  username: string;
-  profilePic: string;
-  timestamp: string;
-}
-
-interface View {
-  userId: string;
-  username: string;
-  profilePic: string;
-  timestamp: string;
-}
 
 type Duck = {
   x: number;
@@ -61,7 +46,7 @@ type Duck = {
   boostStartTime?: number;
   boostDuration?: number;
   boostTarget?: number;
-  username?: string;
+  username?: string; // added so ducks can carry assigned username (mock)
 };
 
 export default function CanvasExample() {
@@ -80,161 +65,285 @@ export default function CanvasExample() {
   const raceStartedRef = useRef(false);
   const lastTimeRef = useRef(0);
 
-  const [likes, setLikes] = useState<Like[]>([]);
-  const [viewers, setViewers] = useState<View[]>([]);
-  const viewersRef = useRef<View[]>([]);
-  const likesRef = useRef<Like[]>([]);
-  const countdownStartedRef = useRef(false);
-  const countdownIntervalRef = useRef<number | undefined>(undefined);
-  const [ducks, setDucks] = useState<Duck[]>([]);
+  // ---------------------------
+  // MOCK LIVE FEED (for testing)
+  // ---------------------------
+  // change MIN_USERS_REQUIRED to whatever X you want
+  const MIN_USERS_REQUIRED = 20;
 
-  const randomNames = [
-    "Alpha",
-    "Bravo",
-    "Charlie",
-    "Delta",
-    "Echo",
-    "Zeta",
-    "Omega",
-    "Nova",
-    "Pixel",
-    "Raven",
-  ];
+  const [likers, setLikers] = useState<string[]>([]);
+  const [viewers, setViewers] = useState<string[]>([]);
+  const likesRef = useRef<string[]>([]);
+  const viewersRef = useRef<string[]>([]);
+  likesRef.current = likers;
+  viewersRef.current = viewers;
 
-  const numberOfDucks = ducks.length;
-  const startY = 70;
-  const endY = 370;
-  const startX = 100;
-  const slope = -0.4;
-  const spacingY = (endY - startY) / (numberOfDucks - 1);
+  // Rebuild signal for ducks
+  const rebuildDucksRef = useRef(false);
 
-  function createRegularDuck(user: { username: string }, i: number): Duck {
-    return {
-      x: 0,
-      y: 0,
-      num: i + 1,
-      username: user.username,
-      type: "regular",
-      amplitude: 4 + Math.random() * 4,
-      speed: 0.3 + Math.random() * 3,
-      phase: Math.random() * Math.PI * 2,
-      speedFactor: 0.9 + Math.random() * 0.05,
-      boostApplied: false,
+  // track if countdown active via ref so mock generator doesn't restart repeatedly
+  const countdownActiveRef = useRef(false);
+
+  // refs for ducks and caches so main loop can read/write
+  const ducksRef = useRef<Duck[]>([]);
+  const duckCacheRef = useRef<Map<string, HTMLCanvasElement>>(new Map());
+  const regularDuckCacheRef = useRef<Map<Duck, HTMLCanvasElement>>(new Map());
+
+  // refs for winner / timing
+  const raceStartTimeRef = useRef<number>(0);
+  const winnerRef = useRef<Duck | null>(null);
+  const winnerDisplayStartRef = useRef<number>(0);
+
+  // countdown interval ref (so we can clear on unmount)
+  const countdownIntervalRef = useRef<number | null>(null);
+
+  // ---------------------------
+  // Mock generator (likes + viewers)
+  // ---------------------------
+  useEffect(() => {
+    const likeNames = [
+      "Anna",
+      "Ben",
+      "Cris",
+      "Dany",
+      "Eli",
+      "Felix",
+      "Gio",
+      "Haru",
+      "Ivan",
+      "Jill",
+      "Kira",
+      "Luna",
+      "Max",
+      "Niko",
+    ];
+
+    const viewerNames = Array.from({ length: 30 }, (_, i) => `Viewer${i + 1}`);
+
+    // Like generator: adds unique likes over time
+    const likeInterval = window.setInterval(() => {
+      const name = likeNames[Math.floor(Math.random() * likeNames.length)];
+      setLikers((prev) => {
+        if (prev.includes(name)) return prev;
+        const next = [...prev, name];
+        likesRef.current = next;
+        rebuildDucksRef.current = true;
+        // if enough participants and countdown not active, request countdown
+        if (
+          next.length + viewersRef.current.length >= MIN_USERS_REQUIRED &&
+          !countdownActiveRef.current
+        ) {
+          countdownActiveRef.current = true;
+        }
+        return next;
+      });
+    }, 2000 + Math.random() * 3000);
+
+    // Viewer join/leave generator
+    const viewerInterval = window.setInterval(() => {
+      const name = viewerNames[Math.floor(Math.random() * viewerNames.length)];
+      setViewers((prev) => {
+        let next = [...prev];
+        if (Math.random() > 0.5) {
+          // join
+          if (!next.includes(name)) {
+            next.push(name);
+          }
+        } else {
+          // leave
+          next = next.filter((v) => v !== name);
+        }
+        viewersRef.current = next;
+        rebuildDucksRef.current = true;
+        if (
+          likesRef.current.length + next.length >= MIN_USERS_REQUIRED &&
+          !countdownActiveRef.current
+        ) {
+          countdownActiveRef.current = true;
+        }
+        return next;
+      });
+    }, 1500 + Math.random() * 2500);
+
+    return () => {
+      clearInterval(likeInterval);
+      clearInterval(viewerInterval);
     };
-  }
+  }, []);
 
-  const premiumTypes: Duck["type"][] = [
-    "premium1",
-    "premium2",
-    "premium3",
-    "premium4",
-    "premium5",
-    "premium6",
-    "premium7",
-    "premium8",
-    "premium9",
-  ];
+  // ---------------------------
+  // startCountdown (moved to component scope so mock can toggle)
+  // ---------------------------
+  const startCountdown = () => {
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+    }
+    setCountdown(5);
+    countdownRef.current = 5;
+    startingLaneXRef.current = 80;
 
-  function createPremiumDuck(user: { username: string }, i: number): Duck {
-    return {
+    countdownIntervalRef.current = window.setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          if (countdownIntervalRef.current) {
+            clearInterval(countdownIntervalRef.current);
+            countdownIntervalRef.current = null;
+          }
+          countdownRef.current = 0;
+          return 0;
+        }
+        countdownRef.current = prev - 1;
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  // ---------------------------
+  // Build ducks from users (creates caches too)
+  // ---------------------------
+  const createDuckWithNumber = (type: Duck["type"], num: number) => {
+    const offCanvas = document.createElement("canvas");
+    offCanvas.width = 150;
+    offCanvas.height = 150;
+    const offCtx = offCanvas.getContext("2d")!;
+
+    switch (type) {
+      case "premium1":
+        duckPremiumTwo(offCtx, 0, 0, num);
+        break;
+      case "premium2":
+        duckPremiumOne(offCtx, 0, 0, num);
+        break;
+      case "premium3":
+        duckPremiumZero(offCtx, 0, 0, num);
+        break;
+      case "premium4":
+        duckPremiumThree(offCtx, 0, 0, num);
+        break;
+      case "premium5":
+        duckPremiumFour(offCtx, 0, 0, num);
+        break;
+      case "premium6":
+        duckPremiumFive(offCtx, 0, 0, num);
+        break;
+      case "premium7":
+        duckPremiumSix(offCtx, 0, 0, num);
+        break;
+      case "premium8":
+        duckPremiumSeven(offCtx, 0, 0, num);
+        break;
+      case "premium9":
+        duckPremiumEight(offCtx, 0, 0, num);
+        break;
+    }
+
+    return offCanvas;
+  };
+
+  const createRegularDuckCanvas = (duck: Duck) => {
+    const offCanvas = document.createElement("canvas");
+    offCanvas.width = 100;
+    offCanvas.height = 100;
+    const offCtx = offCanvas.getContext("2d")!;
+    duckRegular(offCtx, 0, 0);
+    offCtx.fillStyle = "black";
+    offCtx.font = "bold 14px Arial";
+    offCtx.textAlign = "center";
+    offCtx.textBaseline = "middle";
+    offCtx.fillText(String(duck.num), 24, 39);
+    return offCanvas;
+  };
+
+  const buildDucksFromUsers = () => {
+    const likes = likesRef.current.slice(0, 9); // only up to 9 premium types
+    const viewersList = viewersRef.current;
+
+    const premiumTypes: Duck["type"][] = [
+      "premium1",
+      "premium2",
+      "premium3",
+      "premium4",
+      "premium5",
+      "premium6",
+      "premium7",
+      "premium8",
+      "premium9",
+    ];
+
+    const newPremiumDucks: Duck[] = likes.map((username, i) => ({
       x: 0,
       y: 0,
       num: i + 1,
-      username: user.username,
-      type: premiumTypes[i % premiumTypes.length],
       amplitude: 4 + Math.random() * 6,
       speed: 0.3 + Math.random() * 3,
       phase: Math.random() * Math.PI * 2,
-      speedFactor: 1.02,
+      type: premiumTypes[i] || "premium1",
+      baseX: 100,
+      speedFactor: 0.9 + Math.random() * 0.05,
       boostApplied: false,
       boostDelay: Math.random() * 2000 + 1000,
-    };
-  }
+      username,
+    }));
 
-  useEffect(() => {
-    const newDucks: Duck[] = [
-      ...likes.map((u, i) => createPremiumDuck(u, i)),
-      ...viewers.map((u, i) => createRegularDuck(u, i)),
-    ].sort(() => Math.random() - 0.5);
+    const newRegularDucks: Duck[] = viewersList.map((username, i) => ({
+      x: 0,
+      y: 0,
+      num: newPremiumDucks.length + i + 1,
+      amplitude: 4 + Math.random() * 4,
+      speed: 0.3 + Math.random() * 3,
+      phase: Math.random() * Math.PI * 2,
+      type: "regular",
+      baseX: 100,
+      speedFactor: 0.9 + Math.random() * 0.05,
+      username,
+    }));
 
-    newDucks.forEach((d, i) => {
+    const combined = [...newPremiumDucks, ...newRegularDucks].sort(
+      () => Math.random() - 0.5
+    );
+
+    // Position ducks vertically
+    const numberOfDucks = 20;
+    const startY = 70;
+    const endY = 370;
+    const startX = 100;
+    const slope = -0.4;
+    const spacingY = (endY - startY) / (numberOfDucks - 1);
+
+    combined.forEach((d, i) => {
       d.y = startY + i * spacingY;
       d.x = startX + slope * (i * spacingY);
       d.baseX = d.x;
     });
 
-    setDucks(newDucks);
-  }, [likes, viewers]);
+    // Recreate caches
+    const duckCache = new Map<string, HTMLCanvasElement>();
+    newPremiumDucks.forEach((d) => {
+      duckCache.set(`${d.type}_${d.num}`, createDuckWithNumber(d.type, d.num));
+    });
 
-  // Keep refs updated
-  useEffect(() => {
-    viewersRef.current = viewers;
-  }, [viewers]);
-  useEffect(() => {
-    likesRef.current = likes;
-  }, [likes]);
+    const regularDuckCache = new Map<Duck, HTMLCanvasElement>();
+    newRegularDucks.forEach((d) => {
+      regularDuckCache.set(d, createRegularDuckCanvas(d));
+    });
 
-  // Countdown
-  const startCountdown = () => {
-    setCountdown(10);
-    startingLaneXRef.current = 80;
+    // Save to refs used in animation loop
+    ducksRef.current = combined;
+    duckCacheRef.current = duckCache;
+    regularDuckCacheRef.current = regularDuckCache;
 
-    if (!countdownIntervalRef.current) {
-      countdownIntervalRef.current = window.setInterval(() => {
-        setCountdown((prev) => {
-          if (prev <= 1) {
-            clearInterval(countdownIntervalRef.current);
-            countdownIntervalRef.current = undefined;
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
+    // Clear winner if any and reset some race state
+    winnerRef.current = null;
+    raceStartTimeRef.current = 0;
+    winnerDisplayStartRef.current = 0;
+
+    // Mark that we've rebuilt ducks
+    rebuildDucksRef.current = false;
   };
 
-  useEffect(() => {
-    if (!countdownStartedRef.current && ducks.length >= 20) {
-      countdownStartedRef.current = true;
-      startCountdown();
-    }
-  }, [ducks]);
-
-  // Fake live data generator
-  // Fake live data generator
-  useEffect(() => {
-    const MAX_PLAYERS = 20; // maximum ducks for the race
-
-    const interval = setInterval(() => {
-      const timestamp = new Date().toISOString();
-
-      // Add likes only if total ducks < MAX_PLAYERS
-      setLikes((prev) => {
-        if (prev.length + viewers.length >= MAX_PLAYERS) return prev;
-        const newLike = {
-          userId: "1",
-          username: randomNames[Math.floor(Math.random() * randomNames.length)],
-          profilePic: "",
-          timestamp,
-        };
-        return [newLike, ...prev].slice(0, MAX_PLAYERS);
-      });
-
-      setViewers((prev) => {
-        if (prev.length + likes.length >= MAX_PLAYERS) return prev;
-        const newViewer = {
-          userId: "2",
-          username: randomNames[Math.floor(Math.random() * randomNames.length)],
-          profilePic: "",
-          timestamp,
-        };
-        return [newViewer, ...prev].slice(0, MAX_PLAYERS);
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [likes.length, viewers.length]);
-
+  // ---------------------------
+  // MAIN CANVAS EFFECT (single mount)
+  // ---------------------------
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -255,119 +364,23 @@ export default function CanvasExample() {
     const WATER_WIDTH = 1600;
     let waterX = 0;
 
-    /** Duck refs for live updates */
-    const ducksRef = { current: ducks }; // always keep latest ducks
-    const duckCacheRef = { current: new Map<string, HTMLCanvasElement>() };
-    const regularDuckCacheRef = { current: new Map<Duck, HTMLCanvasElement>() };
+    // If there are initial mock users already, build ducks now
+    buildDucksFromUsers();
 
-    /** Helper: rebuild caches for ducks */
-    const rebuildDuckCaches = () => {
-      const duckCache = new Map<string, HTMLCanvasElement>();
-      const regularDuckCache = new Map<Duck, HTMLCanvasElement>();
-
-      ducksRef.current.forEach((d) => {
-        if (d.type === "regular") {
-          const offCanvas = document.createElement("canvas");
-          offCanvas.width = 100;
-          offCanvas.height = 100;
-          const offCtx = offCanvas.getContext("2d")!;
-          duckRegular(offCtx, 0, 0);
-          offCtx.fillStyle = "black";
-          offCtx.font = "bold 14px Arial";
-          offCtx.textAlign = "center";
-          offCtx.textBaseline = "middle";
-          offCtx.fillText(d.num.toString(), 24, 39);
-          regularDuckCache.set(d, offCanvas);
-        } else {
-          const offCanvas = document.createElement("canvas");
-          offCanvas.width = 150;
-          offCanvas.height = 150;
-          const offCtx = offCanvas.getContext("2d")!;
-          switch (d.type) {
-            case "premium1":
-              duckPremiumTwo(offCtx, 0, 0, d.num);
-              break;
-            case "premium2":
-              duckPremiumOne(offCtx, 0, 0, d.num);
-              break;
-            case "premium3":
-              duckPremiumZero(offCtx, 0, 0, d.num);
-              break;
-            case "premium4":
-              duckPremiumThree(offCtx, 0, 0, d.num);
-              break;
-            case "premium5":
-              duckPremiumFour(offCtx, 0, 0, d.num);
-              break;
-            case "premium6":
-              duckPremiumFive(offCtx, 0, 0, d.num);
-              break;
-            case "premium7":
-              duckPremiumSix(offCtx, 0, 0, d.num);
-              break;
-            case "premium8":
-              duckPremiumSeven(offCtx, 0, 0, d.num);
-              break;
-            case "premium9":
-              duckPremiumEight(offCtx, 0, 0, d.num);
-              break;
-          }
-          duckCache.set(`${d.type}_${d.num}`, offCanvas);
-        }
-      });
-
-      duckCacheRef.current = duckCache;
-      regularDuckCacheRef.current = regularDuckCache;
-    };
-
-    rebuildDuckCaches(); // initial cache
-
-    /** Race variables */
     const FINISH_LINE = 600;
     const RACE_DURATION = 60000;
-    let raceStartTime = 0;
-    let winner: Duck | null = null;
-    let winnerDisplayStart = 0;
 
     const startRace = (time: number) => {
       raceStartedRef.current = true;
-      raceStartTime = time;
+      raceStartTimeRef.current = time;
     };
 
-    /** Draw usernames using latest refs */
-    const drawUsernames = (ctx: CanvasRenderingContext2D, time: number) => {
-      ducksRef.current.forEach((d) => {
-        let username: string;
-
-        if (d.type === "regular") {
-          const index = viewersRef.current.length
-            ? d.num % viewersRef.current.length
-            : 0;
-          username = viewersRef.current[index]?.username ?? "Guest";
-          ctx.fillStyle = "white";
-        } else {
-          const index = likesRef.current.length
-            ? d.num % likesRef.current.length
-            : 0;
-          username = likesRef.current[index]?.username ?? "Guest";
-          ctx.fillStyle = "yellow";
-        }
-
-        const waveY =
-          d.y + Math.sin((time / 4000) * d.speed + d.phase) * d.amplitude;
-
-        ctx.font = "bold 16px Arial";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "bottom";
-        ctx.strokeStyle = "black";
-        ctx.lineWidth = 3;
-        ctx.strokeText(username, d.x + 40, waveY - 10);
-        ctx.fillText(username, d.x + 40, waveY - 10);
-      });
-    };
-
-    /** Animation loop */
     const loop = (time: number) => {
+      // Rebuild ducks on-demand when mock feed changed
+      if (!raceStartedRef.current && rebuildDucksRef.current) {
+        buildDucksFromUsers();
+      }
+
       const deltaTime = lastTimeRef.current ? time - lastTimeRef.current : 16;
       lastTimeRef.current = time;
       const dt = deltaTime / 16.6;
@@ -413,13 +426,14 @@ export default function CanvasExample() {
           resetFinishLane();
         if (countdownRef.current !== 5) finishLaneResetOnceRef.current = false;
       }
+
       const FINISH_LANE_MOVE_DISTANCE = 900;
       const FINISH_LANE_SPEED = 3;
       const FINISH_LANE_DELAY = 3000;
 
       if (raceStartedRef.current) {
         const now = time;
-        const elapsed = now - raceStartTime;
+        const elapsed = now - raceStartTimeRef.current;
 
         if (
           elapsed >= RACE_DURATION - FINISH_LANE_DELAY &&
@@ -443,11 +457,14 @@ export default function CanvasExample() {
       /** Race movement */
       if (raceStartedRef.current) {
         const now = time;
-        const elapsed = now - raceStartTime;
+        const elapsed = now - raceStartTimeRef.current;
         const smoothing = 0.15;
 
-        ducksRef.current.forEach((d) => {
-          if (winner && d !== winner) {
+        const ducks = ducksRef.current;
+        let winnerLocal = winnerRef.current;
+
+        ducks.forEach((d) => {
+          if (winnerLocal && d !== winnerLocal) {
             const hideTarget = -300;
             const distance = d.x - hideTarget;
             let slide = 0.5 + Math.min(distance / 100, 1) * 1.2;
@@ -456,12 +473,43 @@ export default function CanvasExample() {
             return;
           }
 
+          // Initialize per-duck
           if (!d.speedFactor) d.speedFactor = 0.1 + Math.random() * 0.9;
           if (!d.jitterPhase) d.jitterPhase = Math.random() * 1000;
           if (!d.sprintSeed) d.sprintSeed = Math.random() * 10;
           if (!d.backwardSeed) d.backwardSeed = Math.random() * 5;
           if (d.isSprinting === undefined) d.isSprinting = false;
           if (!d.sprintStartTime) d.sprintStartTime = 0;
+          if (d.boostApplied === undefined) d.boostApplied = false;
+          if (!d.boostDelay) d.boostDelay = Math.random() * 2000 + 1000;
+
+          // Smooth one-time premium boost
+          if (
+            d.type !== "regular" &&
+            !d.boostApplied &&
+            elapsed >= d.boostDelay
+          ) {
+            d.boostApplied = true;
+            d.boostStartTime = now;
+            d.boostDuration = 1500 + Math.random() * 500;
+            d.boostTarget = d.x + 50 + Math.random() * 30;
+          }
+          if (d.boostApplied && d.boostStartTime && d.boostTarget) {
+            const t = Math.min(
+              (now - d.boostStartTime) / (d.boostDuration || 1),
+              1
+            );
+            d.x += (d.boostTarget - d.x) * t;
+            if (t >= 1) delete d.boostTarget;
+          }
+
+          // Sprint/backward
+          if (!d.isSprinting && Math.random() < 0.001) {
+            d.isSprinting = true;
+            d.sprintStartTime = now;
+          }
+          if (d.isSprinting && now - d.sprintStartTime >= 10000)
+            d.isSprinting = false;
 
           d.jitterPhase += 0.02;
           const sprint =
@@ -477,28 +525,47 @@ export default function CanvasExample() {
           d.x += (targetX - d.x) * smoothing;
         });
 
-        if (!winner && time - raceStartTime >= RACE_DURATION) {
-          winner = ducksRef.current.reduce((prev, curr) =>
+        // End race
+        if (elapsed >= RACE_DURATION && !winnerRef.current) {
+          const ducks = ducksRef.current;
+          winnerRef.current = ducks.reduce((prev, curr) =>
             curr.x > prev.x ? curr : prev
           );
-          winnerDisplayStart = time;
+          winnerDisplayStartRef.current = now;
         }
 
-        if (winner && time - winnerDisplayStart > 10000) {
+        // Reset race
+        if (winnerRef.current && now - winnerDisplayStartRef.current > 10000) {
           ducksRef.current.forEach((d) => {
             d.x = d.baseX ?? 0;
+            d.finished = false;
+            d.speedFactor = undefined;
+            d.jitterPhase = undefined;
+            d.sprintSeed = undefined;
+            d.backwardSeed = undefined;
+            d.isSprinting = undefined;
+            d.sprintStartTime = undefined;
+            d.boostApplied = undefined;
+            d.boostDelay = undefined;
+            d.boostStartTime = undefined;
+            d.boostDuration = undefined;
+            d.boostTarget = undefined;
           });
-          winner = null;
+          winnerRef.current = null;
           raceStartedRef.current = false;
+
+          // rebuild ducks from the latest mock lists and start countdown for next round
+          buildDucksFromUsers();
+          countdownActiveRef.current = false; // allow next countdown to be triggered by mock
           startCountdown();
         }
       }
 
-      // Draw usernames and ducks
-      drawUsernames(ctx, time);
-
+      /** Draw ducks */
       const waveOffset = time / 4000;
-      ducksRef.current.forEach((d) => {
+      const ducksToDraw = ducksRef.current;
+
+      ducksToDraw.forEach((d) => {
         const waveY =
           d.y + Math.sin(waveOffset * d.speed + d.phase) * d.amplitude;
         if (d.type === "regular") {
@@ -508,15 +575,23 @@ export default function CanvasExample() {
           const offCanvas = duckCacheRef.current.get(`${d.type}_${d.num}`);
           if (offCanvas) ctx.drawImage(offCanvas, d.x, waveY);
         }
+
+        // draw username above duck if present
+        if (d.username) {
+          ctx.fillStyle = "white";
+          ctx.font = "12px Arial";
+          ctx.textAlign = "center";
+          ctx.fillText(d.username, d.x + 20, waveY - 10);
+        }
       });
 
-      // Water movement
+      /** Move water */
       waterX -= 2;
       if (waterX <= -WATER_WIDTH) waterX = 0;
 
-      // Countdown display
+      /** Countdown */
       if (!raceStartedRef.current) {
-        ctx.fillStyle = "white";
+        ctx.fillStyle = "red";
         ctx.font = "bold 36px Arial";
         ctx.textAlign = "center";
         ctx.fillText(
@@ -524,28 +599,77 @@ export default function CanvasExample() {
           CANVAS_WIDTH / 2,
           50
         );
+
+        // If countdownActiveRef was set by mock and we haven't started countdown yet -> start it
+        if (
+          !raceStartedRef.current &&
+          countdownActiveRef.current &&
+          countdownRef.current === 60
+        ) {
+          startCountdown();
+        }
       }
 
       requestAnimationFrame(loop);
     };
 
+    // Wait until waterImg loads so background draws properly.
     waterImg.onload = () => requestAnimationFrame(loop);
 
-    /** Rebuild caches whenever ducks state changes */
-    ducksRef.current = ducks;
-    rebuildDuckCaches();
-
-    return () => clearInterval(countdownIntervalRef.current);
-  }, [ducks]);
+    // ensure we clear any countdown interval on unmount
+    return () => {
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // single mount
 
   return (
     <div className="w-screen h-screen flex flex-col p-2 bg-white overflow-hidden">
       <div className="flex justify-end items-center flex-none">
         <div className="w-full h-[450px] px-4 pb-4">
           <div className="w-full h-full text-black bg-white rounded text-sm shadow-2xl p-2">
-            <LiveFeedTesting />
+            {/* Simple debug panel for mock lists */}
+            <div style={{ marginTop: 8 }}>
+              <strong>Mock Likers (premium):</strong>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {likers.map((l) => (
+                  <span
+                    key={l}
+                    style={{
+                      background: "#ffd54f",
+                      padding: "2px 6px",
+                      borderRadius: 6,
+                      fontSize: 12,
+                    }}
+                  >
+                    {l}
+                  </span>
+                ))}
+              </div>
+              <strong style={{ marginTop: 8, display: "block" }}>
+                Mock Viewers:
+              </strong>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {viewers.map((v) => (
+                  <span
+                    key={v}
+                    style={{
+                      background: "#90caf9",
+                      padding: "2px 6px",
+                      borderRadius: 6,
+                      fontSize: 12,
+                    }}
+                  >
+                    {v}
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
+
         <canvas
           ref={canvasRef}
           width={800}
@@ -553,6 +677,7 @@ export default function CanvasExample() {
           className="border-2 bg-[#378098] rounded-t"
         />
       </div>
+
       <div className="w-full h-[280px] flex text-black gap-2 bg-white p-4">
         <div className="flex-1 rounded shadow-2xl bg-white">testing</div>
         <div className="flex-1 rounded shadow-2xl bg-white">2</div>

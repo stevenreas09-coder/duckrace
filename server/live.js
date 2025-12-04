@@ -1,40 +1,61 @@
 // server/live.js
+
 const { Server } = require("socket.io");
-const { TikTokLiveConnection } = require("tiktok-live-connector"); // use new connection
+const { TikTokLiveConnection } = require("tiktok-live-connector");
 const http = require("http");
 
-// Choose a port for your Socket.IO server
+// Socket.IO server port
 const PORT = 4000;
 
-// Create a simple HTTP server (needed by Socket.IO)
+// Create HTTP server for Socket.IO
 const server = http.createServer();
 const io = new Server(server, {
   cors: {
-    origin: "*", // allow all origins for testing
+    origin: "*",
     methods: ["GET", "POST"],
   },
 });
 
-// Listen for frontend connections
+// -----------------------------
+// TRACK LIVE USERS
+// -----------------------------
+let likers = new Set();
+let viewers = new Set();
+
+// -----------------------------
+// SOCKET.IO CONNECTION
+// -----------------------------
 io.on("connection", (socket) => {
-  console.log("Frontend client connected");
+  console.log("Frontend connected:", socket.id);
+
+  // Send initial user lists immediately
+  socket.emit("initialData", {
+    likers: Array.from(likers),
+    viewers: Array.from(viewers),
+  });
 
   socket.on("disconnect", () => {
-    console.log("Frontend client disconnected");
+    console.log(`Frontend disconnected: ${socket.id}`);
   });
 });
 
-// Replace with your TikTok username
-const tiktokUsername = "yournameis4u"; // <-- change this
+// -----------------------------
+// TIKTOK LIVE CONNECTION
+// -----------------------------
+const tiktokUsername = "yournameis4u"; // <-- Change to your TikTok @username
 const liveConnection = new TikTokLiveConnection(tiktokUsername);
 
-// Connect to TikTok live
+// Connect to TikTok
 liveConnection
   .connect()
-  .then(() => console.log("Connected to TikTok live"))
-  .catch((err) => console.error("Failed to connect TikTok live:", err));
+  .then(() => console.log("Connected to TikTok LIVE"))
+  .catch((err) => console.error("TikTok connection failed:", err));
 
-// Listen for comments
+// -----------------------------
+// EVENTS FROM TIKTOK
+// -----------------------------
+
+// COMMENTS (chat)
 liveConnection.on("chat", (data) => {
   io.emit("comment", {
     username: data.uniqueId,
@@ -44,46 +65,59 @@ liveConnection.on("chat", (data) => {
   });
 });
 
-// Listen for likes
+// LIKES → Track Premium Participants
 liveConnection.on("like", (data) => {
+  const user = data.user.uniqueId;
+  const pic = data.user.profilePic;
+
+  likers.add(user); // store premium user
+
   io.emit("like", {
-    userId: data.user.uniqueId,
+    username: user,
+    profilePic: pic,
+    likers: Array.from(likers), // send updated list
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// GIFTS (optional use)
+liveConnection.on("gift", (data) => {
+  io.emit("gift", {
     username: data.user.uniqueId,
+    giftName: data.giftName,
+    giftValue: data.giftValue,
     profilePic: data.user.profilePic,
     timestamp: new Date().toISOString(),
   });
 });
 
-// Listen for gifts
-liveConnection.on("gift", (data) => {
-  io.emit("gift", {
-    user: data.user.uniqueId,
-    giftName: data.giftName,
-    giftValue: data.giftValue,
-    timestamp: new Date().toISOString(),
-  });
-});
-// Listen for new users joining the room
+// VIEWERS JOINING ROOM → Track Regular Participants
 liveConnection.on("roomUser", (data) => {
-  // data.users is sometimes an array of user objects
   if (data.users && data.users.length > 0) {
     data.users.forEach((user) => {
+      viewers.add(user.uniqueId);
+
       io.emit("viewerJoined", {
         username: user.uniqueId,
         profilePic: user.profilePic,
+        viewers: Array.from(viewers), // send updated list
         timestamp: new Date().toISOString(),
       });
     });
   }
 
-  // Emit total viewers count too
-  io.emit("viewers", {
-    viewerCount: data.viewerCount,
-    timestamp: new Date().toISOString(),
-  });
+  // Also broadcast live viewer count if available
+  if (data.viewerCount !== undefined) {
+    io.emit("viewers", {
+      viewerCount: data.viewerCount,
+      timestamp: new Date().toISOString(),
+    });
+  }
 });
 
-// Start the Socket.IO server
+// -----------------------------
+// START SERVER
+// -----------------------------
 server.listen(PORT, () => {
   console.log(`Socket.IO server running on http://localhost:${PORT}`);
 });

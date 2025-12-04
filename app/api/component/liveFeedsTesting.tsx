@@ -1,125 +1,79 @@
 "use client";
-
 import { useEffect, useState } from "react";
 
-interface Comment {
-  username: string;
-  message: string;
-  profilePic: string;
-  timestamp: string;
-}
-
-interface Like {
-  userId: string;
-  username: string;
-  profilePic: string;
-  timestamp: string;
-}
-
-interface Gift {
-  user: string;
-  giftName: string;
-  giftValue: number;
-  timestamp: string;
-}
-interface View {
-  username: string;
-  profilePic: string;
-  timestamp: string;
-}
-
-export default function LiveFeedTesting() {
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [likes, setLikes] = useState<Like[]>([]);
-  const [gifts, setGifts] = useState<Gift[]>([]);
-  const [viewers, setViewers] = useState<View[]>([]);
+export default function useLiveFeedMock() {
+  const [likes, setLikes] = useState<string[]>([]);
+  const [viewers, setViewers] = useState<string[]>([]);
 
   useEffect(() => {
-    // Fake data generator
-    const interval = setInterval(() => {
-      const timestamp = new Date().toISOString();
+    const likeNames = [
+      "Anna",
+      "Ben",
+      "Cris",
+      "Dany",
+      "Eli",
+      "Felix",
+      "Gio",
+      "Haru",
+      "Ivan",
+      "Jill",
+      "Kira",
+      "Luna",
+      "Max",
+      "Niko",
+    ];
 
-      // Random comment
-      setComments((prev) =>
-        [
-          {
-            username: "TestUser",
-            message: "Hello world!",
-            profilePic: "",
-            timestamp,
-          },
-          ...prev,
-        ].slice(0, 5)
-      );
+    const viewerNames = [
+      "Viewer1",
+      "Viewer2",
+      "Viewer3",
+      "Viewer4",
+      "Viewer5",
+      "Viewer6",
+      "Viewer7",
+      "Viewer8",
+      "Viewer9",
+      "Viewer10",
+      "Viewer11",
+      "Viewer12",
+      "Viewer13",
+      "Viewer14",
+      "Viewer15",
+    ];
 
-      // Random like
-      setLikes((prev) =>
-        [
-          { userId: "1", username: "Liker", profilePic: "", timestamp },
-          ...prev,
-        ].slice(0, 5)
-      );
+    // Add like every 2–5 sec
+    const likeInterval = setInterval(() => {
+      const random = likeNames[Math.floor(Math.random() * likeNames.length)];
+      setLikes((prev) => {
+        if (prev.includes(random)) return prev;
+        return [...prev, random];
+      });
+    }, Math.random() * 3000 + 2000);
 
-      // Random gift
-      setGifts((prev) =>
-        [
-          { user: "GiftGiver", giftName: "Rose", giftValue: 1, timestamp },
-          ...prev,
-        ].slice(0, 5)
-      );
-      // Random comment
-      setViewers((prev) =>
-        [
-          {
-            username: "TestUser",
-            profilePic: "",
-            timestamp,
-          },
-          ...prev,
-        ].slice(0, 20)
-      );
-    }, 2000); // every 2 seconds
+    // Add or remove viewers every 2–4 sec
+    const viewerInterval = setInterval(() => {
+      const random =
+        viewerNames[Math.floor(Math.random() * viewerNames.length)];
 
-    return () => clearInterval(interval);
+      setViewers((prev) => {
+        let updated = [...prev];
+
+        // 50% join, 50% leave
+        if (Math.random() > 0.5) {
+          if (!updated.includes(random)) updated.push(random);
+        } else {
+          updated = updated.filter((v) => v !== random);
+        }
+
+        return updated;
+      });
+    }, Math.random() * 2000 + 2000);
+
+    return () => {
+      clearInterval(likeInterval);
+      clearInterval(viewerInterval);
+    };
   }, []);
 
-  return (
-    <div style={{ display: "flex", gap: "2rem" }}>
-      <div>
-        <h3>Comments</h3>
-        {comments.map((c, i) => (
-          <div key={i}>
-            <strong>{c.username}</strong>: {c.message}{" "}
-            <em>({new Date(c.timestamp).toLocaleTimeString()})</em>
-          </div>
-        ))}
-      </div>
-
-      <div>
-        <h4>Likes</h4>
-        {likes.map((l, i) => (
-          <div key={i}>
-            {l.username} liked{" "}
-            <em>({new Date(l.timestamp).toLocaleTimeString()})</em>
-          </div>
-        ))}
-      </div>
-
-      <div>
-        <h3>Gifts</h3>
-        {gifts.map((g, i) => (
-          <div key={i}>
-            {g.user} sent {g.giftName} ({g.giftValue}){" "}
-            <em>({new Date(g.timestamp).toLocaleTimeString()})</em>
-          </div>
-        ))}
-      </div>
-      <div>
-        <h3>Viewers</h3>
-        {viewers.map((l, i) => (
-          <div key={i}>{l.username} is playing </div>
-        ))}
-      </div>
-    </div>
-  );
+  return { likes, viewers };
 }
