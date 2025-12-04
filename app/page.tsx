@@ -302,10 +302,10 @@ export default function CanvasExample() {
       () => Math.random() - 0.5
     );
 
-    // Position ducks vertically
+    // Position ducks slope y
     const numberOfDucks = 20;
     const startY = 70;
-    const endY = 370;
+    const endY = 360;
     const startX = 100;
     const slope = -0.4;
     const spacingY = (endY - startY) / (numberOfDucks - 1);
@@ -368,7 +368,7 @@ export default function CanvasExample() {
     buildDucksFromUsers();
 
     const FINISH_LINE = 600;
-    const RACE_DURATION = 60000;
+    const RACE_DURATION = 120000;
 
     const startRace = (time: number) => {
       raceStartedRef.current = true;
@@ -591,7 +591,7 @@ export default function CanvasExample() {
 
       /** Countdown */
       if (!raceStartedRef.current) {
-        ctx.fillStyle = "red";
+        ctx.fillStyle = "white";
         ctx.font = "bold 36px Arial";
         ctx.textAlign = "center";
         ctx.fillText(
@@ -626,13 +626,15 @@ export default function CanvasExample() {
   }, []); // single mount
 
   return (
-    <div className="w-screen h-screen flex flex-col p-2 bg-white overflow-hidden">
+    <div className="w-screen h-screen flex flex-col p-2 bg-gray-500 overflow-hidden">
       <div className="flex justify-end items-center flex-none">
         <div className="w-full h-[450px] px-4 pb-4">
-          <div className="w-full h-full text-black bg-white rounded text-sm shadow-2xl p-2">
+          <div className="w-full h-full text-black bg-black/80 flex rounded text-sm shadow-2xl p-2">
             {/* Simple debug panel for mock lists */}
             <div style={{ marginTop: 8 }}>
-              <strong>Mock Likers (premium):</strong>
+              <strong className="text-red-500 mb-4">
+                Mock Likers (premium):
+              </strong>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {likers.map((l) => (
                   <span
@@ -648,7 +650,10 @@ export default function CanvasExample() {
                   </span>
                 ))}
               </div>
-              <strong style={{ marginTop: 8, display: "block" }}>
+              <strong
+                className="text-amber-300"
+                style={{ marginTop: 8, display: "block" }}
+              >
                 Mock Viewers:
               </strong>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -674,14 +679,14 @@ export default function CanvasExample() {
           ref={canvasRef}
           width={800}
           height={450}
-          className="border-2 bg-[#378098] rounded-t"
+          className="border-4 border-violet-500 bg-[#378098] rounded-t"
         />
       </div>
 
-      <div className="w-full h-[280px] flex text-black gap-2 bg-white p-4">
-        <div className="flex-1 rounded shadow-2xl bg-white">testing</div>
-        <div className="flex-1 rounded shadow-2xl bg-white">2</div>
-        <div className="flex-1 rounded shadow-2xl bg-white">3</div>
+      <div className="w-full h-[280px] flex text-black gap-2 bg-gray-500 p-4">
+        <div className="flex-1 rounded shadow-2xl bg-black/80">testing</div>
+        <div className="flex-1 rounded shadow-2xl bg-black/80">2</div>
+        <div className="flex-1 rounded shadow-2xl bg-black/80">3</div>
       </div>
     </div>
   );
