@@ -48,6 +48,18 @@ type Duck = {
   boostTarget?: number;
   username?: string; // added so ducks can carry assigned username (mock)
 };
+const colors = [
+  "text-red-300", // lighter red
+  "text-pink-300", // light pink
+  "text-blue-300", // light blue
+  "text-cyan-300", // light cyan
+  "text-green-300", // light green
+  "text-lime-300", // lime green
+  "text-yellow-200", // lighter yellow
+  "text-orange-300", // light orange
+  "text-purple-300", // light purple
+  "text-indigo-300", // light indigo
+];
 
 export default function CanvasExample() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -252,7 +264,7 @@ export default function CanvasExample() {
       clearInterval(countdownIntervalRef.current);
     }
     setCountdown(60);
-    countdownRef.current = 5;
+    countdownRef.current = 0;
     startingLaneXRef.current = 80;
 
     countdownIntervalRef.current = window.setInterval(() => {
@@ -604,12 +616,25 @@ export default function CanvasExample() {
           d.x += (targetX - d.x) * smoothing;
         });
 
+        if (winnerRef.current) {
+          ctx.fillStyle = "yellow";
+          ctx.font = "bold 40px Arial";
+          ctx.textAlign = "center";
+
+          ctx.fillText(
+            `🏆 Winner: ${winnerRef.current.username}!`,
+            CANVAS_WIDTH / 2,
+            CANVAS_HEIGHT / 2
+          );
+        }
+
         // End race
         if (elapsed >= RACE_DURATION && !winnerRef.current) {
           const ducks = ducksRef.current;
           winnerRef.current = ducks.reduce((prev, curr) =>
             curr.x > prev.x ? curr : prev
           );
+
           winnerDisplayStartRef.current = now;
           if (currentMusicRef.current !== winnerMusicRef.current) {
             switchMusic(winnerMusicRef.current); // play race music
@@ -670,9 +695,16 @@ export default function CanvasExample() {
 
         // draw username above duck if present
         if (d.username) {
-          ctx.fillStyle = "white";
-          ctx.font = "12px Arial";
-          ctx.textAlign = "center";
+          ctx.font = "bold 14px Arial"; // font
+          ctx.textAlign = "center"; // align
+          ctx.fillStyle = "white"; // fill color
+          ctx.strokeStyle = "black"; // outline color
+          ctx.lineWidth = 2; // outline thickness
+
+          // Draw the outline first
+          ctx.strokeText(d.username, d.x + 20, waveY - 10);
+
+          // Then fill the text
           ctx.fillText(d.username, d.x + 20, waveY - 10);
         }
       });
@@ -700,10 +732,10 @@ export default function CanvasExample() {
       // COUNTDOWN NOT ACTIVE + RACE NOT STARTED → show players & waiting text
       if (!raceStartedRef.current && !countdownActiveRef.current) {
         const totalUsers = likesRef.current.length + viewersRef.current.length;
-        ctx.fillStyle = "black";
+        ctx.fillStyle = "red";
         ctx.font = "bold 26px Arial";
         ctx.textAlign = "center";
-        ctx.fillText(`Players: ${totalUsers}`, 100, 50);
+        ctx.fillText(`${totalUsers} / 20`, CANVAS_WIDTH / 2, 50);
 
         ctx.fillStyle = "white";
         ctx.font = "bold 24px Arial";
@@ -727,55 +759,74 @@ export default function CanvasExample() {
   }, []); // single mount
 
   return (
-    <div className="w-screen h-screen flex flex-col p-2 bg-gray-500 overflow-hidden">
+    <div className="w-screen relative h-screen flex flex-col p-2 bg-gray-500 overflow-hidden">
       <div className="flex justify-end items-center flex-none">
-        <div className="w-full h-[450px] px-4 pb-4">
-          <div className="w-full h-full text-black bg-black/80 flex rounded text-sm shadow-2xl p-2">
-            {/* Simple debug panel for mock lists */}
-            <div style={{ marginTop: 8 }}>
-              <strong className="text-red-500 mb-4">
-                Mock Likers (premium):
-              </strong>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {likers.map((l) => (
-                  <span
-                    key={l}
-                    style={{
-                      background: "#ffd54f",
-                      padding: "2px 6px",
-                      borderRadius: 6,
-                      fontSize: 12,
-                    }}
-                  >
-                    {l}
-                  </span>
-                ))}
+        <div className="w-full h-[600px] px-4 pb-4">
+          {/* Outer border container */}
+          <div className="w-full h-full border-2 border-white rounded-lg overflow-hidden">
+            <div className="w-full h-full flex flex-col bg-black/80 p-2 text-sm text-black shadow-2xl">
+              {/* Leaderboard panel */}
+              <div className="leaderboard-container flex-1 overflow-hidden mb-2">
+                <div className="leaderboard">
+                  {likers.slice(-7).map((p, i) => {
+                    const colorClass = colors[i % colors.length];
+                    return (
+                      <div
+                        key={p}
+                        className={`leaderboard-item ${colorClass}`}
+                        style={{ animationDelay: `${i * 0.1}s` }}
+                      >
+                        <h1 className="username">{p}</h1>
+                        <span className="status">is playing</span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-              <strong
-                className="text-amber-300"
-                style={{ marginTop: 8, display: "block" }}
-              >
-                Mock Viewers:
-              </strong>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {viewers.map((v) => (
-                  <span
-                    key={v}
-                    style={{
-                      background: "#90caf9",
-                      padding: "2px 6px",
-                      borderRadius: 6,
-                      fontSize: 12,
-                    }}
-                  >
-                    {v}
-                  </span>
-                ))}
+
+              {/* Bottom mock lists */}
+              <div className="h-[40%] pl-3 pt-4 overflow-auto">
+                <strong className="text-red-500 mb-2">
+                  Mock Likers (premium):
+                </strong>
+                <div className="mt-2 min-w-[45%] flex flex-wrap gap-2">
+                  {likers.slice(0, 10).map((l) => (
+                    <span
+                      key={l}
+                      style={{
+                        background: "#ffd54f",
+                        padding: "2px 6px",
+                        borderRadius: 6,
+                        fontSize: 12,
+                      }}
+                    >
+                      {l}
+                    </span>
+                  ))}
+                </div>
+
+                <strong className="text-amber-300 mt-2 block">
+                  Mock Viewers:
+                </strong>
+                <div className="mt-2 flex flex-wrap gap-2 overflow-auto">
+                  {viewers.slice(0, 10).map((v) => (
+                    <span
+                      key={v}
+                      style={{
+                        background: "#90caf9",
+                        padding: "2px 4px",
+                        borderRadius: 6,
+                        fontSize: 12,
+                      }}
+                    >
+                      {v}
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
         </div>
-
         <canvas
           ref={canvasRef}
           width={800}
@@ -783,21 +834,14 @@ export default function CanvasExample() {
           className="border-4 border-violet-500 bg-[#378098] rounded-t"
         />
       </div>
-
-      <div className="w-full h-[280px] flex text-black gap-2 bg-gray-500 p-4">
-        <div className="flex-1 rounded shadow-2xl bg-black/80">
-          {!userInteracted && (
-            <button
-              onClick={handleEnableSound}
-              className="px-4 py-2 bg-green-500 text-white rounded"
-            >
-              Enable Sound
-            </button>
-          )}
-        </div>
-        <div className="flex-1 rounded shadow-2xl bg-black/80">2</div>
-        <div className="flex-1 rounded shadow-2xl bg-black/80">3</div>
-      </div>
+      {!userInteracted && (
+        <button
+          onClick={handleEnableSound}
+          className="w-[150px] absolute right-[27%] bottom-[4%] px-4 py-2 bg-green-500 text-white rounded"
+        >
+          Enable Sound
+        </button>
+      )}
     </div>
   );
 }
