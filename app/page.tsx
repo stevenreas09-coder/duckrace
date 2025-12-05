@@ -260,9 +260,12 @@ export default function CanvasExample() {
   // startCountdown (moved to component scope so mock can toggle)
   // ---------------------------
   const startCountdown = () => {
+    // If an interval exists, stop it AND reset the ref
     if (countdownIntervalRef.current) {
       clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null; // <--- THIS WAS MISSING
     }
+
     setCountdown(60);
     countdownRef.current = 60;
     startingLaneXRef.current = 80;
@@ -277,8 +280,10 @@ export default function CanvasExample() {
           countdownRef.current = 0;
           return 0;
         }
-        countdownRef.current = prev - 1;
-        return prev - 1;
+
+        const next = prev - 1;
+        countdownRef.current = next;
+        return next;
       });
     }, 1000);
   };
@@ -338,6 +343,7 @@ export default function CanvasExample() {
     offCtx.fillText(String(duck.num), 24, 39);
     return offCanvas;
   };
+  const MAX_DUCKS_PER_RACE = 80; // set maximum ducks per race
 
   const buildDucksFromUsers = () => {
     const likes = likesRef.current.slice(0, 9); // only up to 9 premium types
@@ -383,17 +389,18 @@ export default function CanvasExample() {
       username,
     }));
 
-    const combined = [...newPremiumDucks, ...newRegularDucks].sort(
-      () => Math.random() - 0.5
-    );
+    const combined = [...newPremiumDucks, ...newRegularDucks]
+      .sort(() => Math.random() - 0.5)
+      .slice(0, MAX_DUCKS_PER_RACE);
 
     // Position ducks slope y
-    const numberOfDucks = 20;
+    const numberOfDucks = combined.length;
     const startY = 70;
     const endY = 360;
     const startX = 100;
     const slope = -0.4;
-    const spacingY = (endY - startY) / (numberOfDucks - 1);
+    const spacingY =
+      numberOfDucks > 1 ? (endY - startY) / (numberOfDucks - 1) : 0;
 
     combined.forEach((d, i) => {
       d.y = startY + i * spacingY;
@@ -666,11 +673,6 @@ export default function CanvasExample() {
           buildDucksFromUsers();
           countdownActiveRef.current = false; // allow next countdown to be triggered by mock
 
-          if (likesRef.current.length + viewersRef.current.length === 20) {
-          }
-
-          startCountdown();
-
           if (currentMusicRef.current !== idleMusicRef.current) {
             switchMusic(idleMusicRef.current); // <--- This might override the race music
             console.log("asdasd");
@@ -757,6 +759,11 @@ export default function CanvasExample() {
     return () => {
       if (countdownIntervalRef.current) {
         clearInterval(countdownIntervalRef.current);
+        countdownIntervalRef.current = null;
+      }
+      if (currentMusicRef.current) {
+        currentMusicRef.current.pause();
+        currentMusicRef.current = null;
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
