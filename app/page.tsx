@@ -97,6 +97,79 @@ export default function CanvasExample() {
   // countdown interval ref (so we can clear on unmount)
   const countdownIntervalRef = useRef<number | null>(null);
 
+  // music
+  const [userInteracted, setUserInteracted] = useState(false);
+  // Add these at the top of your component (CanvasExample)
+  const idleMusicRef = useRef<HTMLAudioElement | null>(null);
+  const raceMusicRef = useRef<HTMLAudioElement | null>(null);
+  const winnerMusicRef = useRef<HTMLAudioElement | null>(null);
+  const currentMusicRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    // ... inside useEffect for audio loading
+    idleMusicRef.current = new Audio("/music/racestart-2.mp3");
+    raceMusicRef.current = new Audio("/music/racestart-1.mp3");
+    winnerMusicRef.current = new Audio("/music/winner.mp3");
+
+    // Add looping
+    if (idleMusicRef.current) idleMusicRef.current.loop = true;
+    if (raceMusicRef.current) raceMusicRef.current.loop = true;
+    // winnerMusic usually doesn't loop, but set if desired:
+    // if (winnerMusicRef.current) winnerMusicRef.current.loop = true;
+
+    idleMusicRef.current.load();
+    // ...
+  }, []);
+
+  // After
+  const handleEnableSound = () => {
+    setUserInteracted(true);
+    console.log("User interaction detected, enabling sound.");
+
+    // 1. Play and immediately pause all tracks to unlock audio (as you already do)
+    const unlockAudio = async () => {
+      try {
+        // Use Promises to ensure unlock attempts are done
+        await idleMusicRef.current
+          ?.play()
+          .then(() => idleMusicRef.current?.pause());
+        await raceMusicRef.current
+          ?.play()
+          .then(() => raceMusicRef.current?.pause());
+        await winnerMusicRef.current
+          ?.play()
+          .then(() => winnerMusicRef.current?.pause());
+      } catch (error) {
+        console.error("Failed to unlock audio context:", error);
+      }
+    };
+
+    unlockAudio().then(() => {
+      if (
+        idleMusicRef.current &&
+        currentMusicRef.current !== idleMusicRef.current
+      ) {
+        idleMusicRef.current.currentTime = 0;
+        idleMusicRef.current.loop = true; // Ensure it loops if it's idle music
+        idleMusicRef.current.play().catch(() => {});
+        currentMusicRef.current = idleMusicRef.current;
+      }
+    });
+  };
+  const switchMusic = (next: HTMLAudioElement | null) => {
+    // Stop current
+    if (currentMusicRef.current) {
+      currentMusicRef.current.pause();
+    }
+
+    // Start next
+    if (next) {
+      next.currentTime = 0;
+      next.play().catch(() => {});
+      currentMusicRef.current = next; // <— CRITICAL!
+    }
+  };
+
   // ---------------------------
   // Mock generator (likes + viewers)
   // ---------------------------
@@ -178,7 +251,7 @@ export default function CanvasExample() {
     if (countdownIntervalRef.current) {
       clearInterval(countdownIntervalRef.current);
     }
-    setCountdown(5);
+    setCountdown(60);
     countdownRef.current = 5;
     startingLaneXRef.current = 80;
 
@@ -373,6 +446,12 @@ export default function CanvasExample() {
     const startRace = (time: number) => {
       raceStartedRef.current = true;
       raceStartTimeRef.current = time;
+
+      // 2. Switch to the race music
+      if (currentMusicRef.current !== raceMusicRef.current) {
+        switchMusic(raceMusicRef.current); // play race music
+        console.log("Starting race music..."); // Updated log/comment
+      }
     };
 
     const loop = (time: number) => {
@@ -532,6 +611,10 @@ export default function CanvasExample() {
             curr.x > prev.x ? curr : prev
           );
           winnerDisplayStartRef.current = now;
+          if (currentMusicRef.current !== winnerMusicRef.current) {
+            switchMusic(winnerMusicRef.current); // play race music
+            console.log("Starting race win..."); // Updated log/comment
+          }
         }
 
         // Reset race
@@ -557,7 +640,16 @@ export default function CanvasExample() {
           // rebuild ducks from the latest mock lists and start countdown for next round
           buildDucksFromUsers();
           countdownActiveRef.current = false; // allow next countdown to be triggered by mock
+
+          if (likesRef.current.length + viewersRef.current.length === 20) {
+          }
+
           startCountdown();
+
+          if (currentMusicRef.current !== idleMusicRef.current) {
+            switchMusic(idleMusicRef.current); // <--- This might override the race music
+            console.log("asdasd");
+          }
         }
       }
 
@@ -589,8 +681,8 @@ export default function CanvasExample() {
       waterX -= 2;
       if (waterX <= -WATER_WIDTH) waterX = 0;
 
-      /** Countdown */
-      if (!raceStartedRef.current) {
+      // COUNTDOWN ACTIVE → show countdown
+      if (!raceStartedRef.current && countdownActiveRef.current) {
         ctx.fillStyle = "white";
         ctx.font = "bold 36px Arial";
         ctx.textAlign = "center";
@@ -600,14 +692,23 @@ export default function CanvasExample() {
           50
         );
 
-        // If countdownActiveRef was set by mock and we haven't started countdown yet -> start it
-        if (
-          !raceStartedRef.current &&
-          countdownActiveRef.current &&
-          countdownRef.current === 60
-        ) {
+        if (countdownActiveRef.current && countdownRef.current === 60) {
           startCountdown();
         }
+      }
+
+      // COUNTDOWN NOT ACTIVE + RACE NOT STARTED → show players & waiting text
+      if (!raceStartedRef.current && !countdownActiveRef.current) {
+        const totalUsers = likesRef.current.length + viewersRef.current.length;
+        ctx.fillStyle = "black";
+        ctx.font = "bold 26px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText(`Players: ${totalUsers}`, 100, 50);
+
+        ctx.fillStyle = "white";
+        ctx.font = "bold 24px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("Race start soon", CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
       }
 
       requestAnimationFrame(loop);
@@ -684,7 +785,16 @@ export default function CanvasExample() {
       </div>
 
       <div className="w-full h-[280px] flex text-black gap-2 bg-gray-500 p-4">
-        <div className="flex-1 rounded shadow-2xl bg-black/80">testing</div>
+        <div className="flex-1 rounded shadow-2xl bg-black/80">
+          {!userInteracted && (
+            <button
+              onClick={handleEnableSound}
+              className="px-4 py-2 bg-green-500 text-white rounded"
+            >
+              Enable Sound
+            </button>
+          )}
+        </div>
         <div className="flex-1 rounded shadow-2xl bg-black/80">2</div>
         <div className="flex-1 rounded shadow-2xl bg-black/80">3</div>
       </div>
