@@ -264,7 +264,7 @@ export default function CanvasExample() {
       clearInterval(countdownIntervalRef.current);
     }
     setCountdown(60);
-    countdownRef.current = 0;
+    countdownRef.current = 60;
     startingLaneXRef.current = 80;
 
     countdownIntervalRef.current = window.setInterval(() => {
@@ -520,7 +520,7 @@ export default function CanvasExample() {
 
       const FINISH_LANE_MOVE_DISTANCE = 900;
       const FINISH_LANE_SPEED = 3;
-      const FINISH_LANE_DELAY = 3000;
+      const FINISH_LANE_DELAY = 2000;
 
       if (raceStartedRef.current) {
         const now = time;
@@ -710,7 +710,7 @@ export default function CanvasExample() {
       });
 
       /** Move water */
-      waterX -= 2;
+      waterX -= 3;
       if (waterX <= -WATER_WIDTH) waterX = 0;
 
       // COUNTDOWN ACTIVE → show countdown
@@ -724,7 +724,11 @@ export default function CanvasExample() {
           50
         );
 
-        if (countdownActiveRef.current && countdownRef.current === 60) {
+        if (
+          countdownActiveRef.current &&
+          !raceStartedRef.current &&
+          !countdownIntervalRef.current
+        ) {
           startCountdown();
         }
       }
@@ -760,15 +764,15 @@ export default function CanvasExample() {
 
   return (
     <div className="w-screen relative h-screen flex flex-col p-2 bg-gray-500 overflow-hidden">
-      <div className="flex justify-end items-center flex-none">
-        <div className="w-full h-[600px] px-4 pb-4">
+      <div className="flex justify-start items-start flex-none">
+        <div className="w-full h-[600px] flex flex-col px-4 pb-4">
           {/* Outer border container */}
           <div className="w-full h-full border-2 border-white rounded-lg overflow-hidden">
             <div className="w-full h-full flex flex-col bg-black/80 p-2 text-sm text-black shadow-2xl">
               {/* Leaderboard panel */}
               <div className="leaderboard-container flex-1 overflow-hidden mb-2">
                 <div className="leaderboard">
-                  {likers.slice(-7).map((p, i) => {
+                  {viewers.slice(-7).map((p, i) => {
                     const colorClass = colors[i % colors.length];
                     return (
                       <div
@@ -787,7 +791,7 @@ export default function CanvasExample() {
               {/* Bottom mock lists */}
               <div className="h-[40%] pl-3 pt-4 overflow-auto">
                 <strong className="text-red-500 mb-2">
-                  Mock Likers (premium):
+                  Twitch/Tiktok/Generator Likers (premium):
                 </strong>
                 <div className="mt-2 min-w-[45%] flex flex-wrap gap-2">
                   {likers.slice(0, 10).map((l) => (
@@ -806,7 +810,7 @@ export default function CanvasExample() {
                 </div>
 
                 <strong className="text-amber-300 mt-2 block">
-                  Mock Viewers:
+                  Twitch/Tiktok/Generator Viewers
                 </strong>
                 <div className="mt-2 flex flex-wrap gap-2 overflow-auto">
                   {viewers.slice(0, 10).map((v) => (
@@ -834,10 +838,21 @@ export default function CanvasExample() {
           className="border-4 border-violet-500 bg-[#378098] rounded-t"
         />
       </div>
+      <div className="bg-black/70 flex justify-center rounded space-x-5 bottom-[13%] right-[1%] border-2 border-white absolute px-4 py-2 w-[50%] text-sm">
+        <button className="w-[30%] hover:bg-white/20 px-6 py-1 rounded-2xl bg-black border-white border-2 ">
+          Connect to tiktok API
+        </button>
+        <button className="w-[30%] px-6 py-1 rounded-2xl hover:bg-violet-300 bg-violet-500 border-white border-2">
+          Connect to twitch API
+        </button>
+        <button className="w-[30%] px-6 py-1 rounded-2xl hover:bg-yellow-300 bg-yellow-500 border-white border-2 ">
+          User Generator
+        </button>
+      </div>
       {!userInteracted && (
         <button
           onClick={handleEnableSound}
-          className="w-[150px] absolute right-[27%] bottom-[4%] px-4 py-2 bg-green-500 text-white rounded"
+          className="w-[150px] absolute right-[52%] border-2 border-white bottom-[15%] px-4 py-2 bg-green-500 text-white rounded"
         >
           Enable Sound
         </button>
