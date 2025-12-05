@@ -17,6 +17,7 @@ import {
   duckPremiumSeven,
   duckPremiumEight,
 } from "./componets/ducks/premium";
+import mockUsers from "@/public/mockUsers.json";
 
 type Duck = {
   x: number;
@@ -331,26 +332,11 @@ export default function CanvasExample() {
     }
   };
   // -------------------------------------------------------------------------------------------
-  // Mock generator (likes + viewers)
+  // Mock generator (likes + viewers) using JSON file
   // --------------------------------------------------------------------------------------------
   const startUserGenerator = () => {
-    const likeNames = [
-      "Anna",
-      "Ben",
-      "Cris",
-      "Dany",
-      "Eli",
-      "Felix",
-      "Gio",
-      "Haru",
-      "Ivan",
-      "Jill",
-      "Kira",
-      "Luna",
-      "Max",
-      "Niko",
-    ];
-    const viewerNames = Array.from({ length: 30 }, (_, i) => `Viewer${i + 1}`);
+    const likeNames = mockUsers.likeNames;
+    const viewerNames = mockUsers.viewerNames;
 
     // Prevent multiple generators
     if ((window as any).mockGeneratorInterval) return;
@@ -377,11 +363,13 @@ export default function CanvasExample() {
       const name = viewerNames[Math.floor(Math.random() * viewerNames.length)];
       setViewers((prev) => {
         let next = [...prev];
+
         if (Math.random() > 0.5) {
           if (!next.includes(name)) next.push(name);
         } else {
           next = next.filter((v) => v !== name);
         }
+
         viewersRef.current = next;
         rebuildDucksRef.current = true;
 
@@ -395,7 +383,6 @@ export default function CanvasExample() {
       });
     }, 1500 + Math.random() * 2500);
 
-    // Save intervals to window for cleanup
     (window as any).mockGeneratorInterval = [likeInterval, viewerInterval];
   };
 
@@ -930,14 +917,14 @@ export default function CanvasExample() {
   return (
     <div className="w-screen relative h-screen flex flex-col p-2 bg-gray-500 overflow-hidden">
       <div className="flex justify-start items-start flex-none">
-        <div className="w-full h-[600px] flex flex-col px-4 pb-4">
+        <div className="w-full h-full flex flex-col px-4 pb-4">
           {/* Outer border container */}
           <div className="w-full h-full border-2 border-white rounded-lg overflow-hidden">
             <div className="w-full h-full flex flex-col bg-black/80 p-2 text-sm text-black shadow-2xl">
               {/* Leaderboard panel */}
               <div className="leaderboard-container flex-1 overflow-hidden mb-2">
                 <div className="leaderboard">
-                  {viewers.slice(-7).map((p, i) => {
+                  {viewers.slice(-6).map((p, i) => {
                     const colorClass = colors[i % colors.length];
                     return (
                       <div
@@ -954,11 +941,12 @@ export default function CanvasExample() {
               </div>
 
               {/* Bottom mock lists */}
-              <div className="h-[40%] pl-3 pt-4 overflow-auto">
-                <strong className="text-red-500 mb-2">
-                  Twitch/Tiktok/Generator Likers (premium):
-                </strong>
-                <div className="mt-2 min-w-[45%] flex flex-wrap gap-2">
+              <div className="h-[270px] pl-3 pt-4 overflow-auto">
+                <p className="text-white text-center text-xl font-bold">
+                  Line Up, Racers!
+                </p>
+                <strong className="text-white mb-2">Top Engagers</strong>
+                <div className="mt-2 flex flex-wrap gap-2">
                   {likers.slice(0, 10).map((l) => (
                     <span
                       key={l}
@@ -974,8 +962,8 @@ export default function CanvasExample() {
                   ))}
                 </div>
 
-                <strong className="text-amber-300 mt-2 block">
-                  Twitch/Tiktok/Generator Viewers
+                <strong className="text-white mt-2 block">
+                  Active Viewers
                 </strong>
                 <div className="mt-2 flex flex-wrap gap-2 overflow-auto">
                   {viewers.slice(0, 10).map((v) => (
