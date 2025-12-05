@@ -3,6 +3,7 @@
 const { Server } = require("socket.io");
 const { TikTokLiveConnection } = require("tiktok-live-connector");
 const http = require("http");
+require("dotenv").config();
 
 // Socket.IO server port
 const PORT = 4000;
@@ -42,15 +43,21 @@ io.on("connection", (socket) => {
 // -----------------------------
 // TIKTOK LIVE CONNECTION
 // -----------------------------
-const tiktokUsername = "yournameis4u"; // <-- Change to your TikTok @username
+const tiktokUsername = process.env.TIKTOK_USERNAME; // <-- Change to your TikTok @username
 const liveConnection = new TikTokLiveConnection(tiktokUsername);
 
 // Connect to TikTok
+// Connect to TikTok
 liveConnection
   .connect()
-  .then(() => console.log("Connected to TikTok LIVE"))
-  .catch((err) => console.error("TikTok connection failed:", err));
-
+  .then(() => {
+    console.log("Connected to TikTok LIVE");
+  })
+  .catch((err) => {
+    console.error("TikTok connection failed:", err);
+    // Notify frontend about the failure
+    io.emit("tiktokError", { message: err.message });
+  });
 // -----------------------------
 // EVENTS FROM TIKTOK
 // -----------------------------

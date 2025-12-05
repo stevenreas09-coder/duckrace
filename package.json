@@ -7,17 +7,21 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "live": "npx ts-node server/live.ts"
+    "live": "npx ts-node server/live.js",
+    "twitch": "npx ts-node server/twitch.js"
   },
   "dependencies": {
+    "dotenv": "^17.2.3",
     "konva": "^10.0.12",
     "next": "16.0.5",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "react-konva": "^19.2.1",
+    "react-toastify": "^11.0.5",
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1",
-    "tiktok-live-connector": "^2.1.0"
+    "tiktok-live-connector": "^2.1.0",
+    "tmi.js": "^1.8.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

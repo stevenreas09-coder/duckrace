@@ -1,4 +1,7 @@
 "use client";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { io, Socket } from "socket.io-client";
 import { useRef, useEffect, useState } from "react";
 import { startingLane } from "./componets/lane";
 import { FinishLane } from "./componets/finishlane";
@@ -77,9 +80,6 @@ export default function CanvasExample() {
   const raceStartedRef = useRef(false);
   const lastTimeRef = useRef(0);
 
-  // ---------------------------
-  // MOCK LIVE FEED (for testing)
-  // ---------------------------
   // change MIN_USERS_REQUIRED to whatever X you want
   const MIN_USERS_REQUIRED = 20;
 
@@ -116,6 +116,12 @@ export default function CanvasExample() {
   const raceMusicRef = useRef<HTMLAudioElement | null>(null);
   const winnerMusicRef = useRef<HTMLAudioElement | null>(null);
   const currentMusicRef = useRef<HTMLAudioElement | null>(null);
+  //tiktok
+  const [tiktokConnected, setTiktokConnected] = useState(false);
+  const tiktokSocketRef = useRef<Socket | null>(null);
+  // New Twitch refs
+  const twitchSocketRef = useRef<any>(null);
+  const [twitchConnected, setTwitchConnected] = useState(false);
 
   useEffect(() => {
     // ... inside useEffect for audio loading
@@ -181,11 +187,153 @@ export default function CanvasExample() {
       currentMusicRef.current = next; // <— CRITICAL!
     }
   };
+  // -------------------------------------------------------------------------------------------
+  // twitch api
+  // --------------------------------------------------------------------------------------------
+  const connectTwitch = () => {
+    if (twitchSocketRef.current) return;
 
-  // ---------------------------
+    const socket = io("http://localhost:4001");
+    twitchSocketRef.current = socket;
+
+    socket.on("connect", () => {
+      toast.success("✅ Connected to Twitch live server");
+      setTwitchConnected(true);
+    });
+
+    socket.on("initialData", (data: { viewers: any[]; followers: any[] }) => {
+      // Normalize followers
+      const followersList = data.followers.map((f) =>
+        typeof f === "string" ? f : f.username
+      );
+
+      // Normalize viewers
+      const viewersList = data.viewers.map((v) =>
+        typeof v === "string" ? v : v.username
+      );
+
+      // Combine followers + existing likes/chat
+      const combinedLikers = Array.from(
+        new Set([...likesRef.current, ...followersList])
+      );
+
+      likesRef.current = combinedLikers; // store all likers
+      viewersRef.current = viewersList;
+      rebuildDucksRef.current = true;
+
+      setLikers(combinedLikers);
+      setViewers(viewersList);
+    });
+
+    socket.on("chat", (data: { username: string; message: string }) => {
+      const username = data.username;
+
+      if (!likesRef.current.includes(username)) {
+        likesRef.current = [...likesRef.current, username];
+        rebuildDucksRef.current = true;
+        setLikers([...likesRef.current]);
+      }
+
+      // Optionally handle chat message display
+      console.log(data);
+    });
+
+    socket.on("viewerJoined", (data: { username: any; viewers: any[] }) => {
+      const viewersList = data.viewers.map((v) =>
+        typeof v === "string" ? v : v.username
+      );
+      viewersRef.current = viewersList;
+      setViewers(viewersList);
+    });
+
+    socket.on("disconnect", () => {
+      toast.error("⚠️ Disconnected from Twitch live server");
+      setTwitchConnected(false);
+    });
+  };
+
+  const disconnectTwitch = () => {
+    if (twitchSocketRef.current) {
+      twitchSocketRef.current.disconnect();
+      twitchSocketRef.current = null;
+      setTwitchConnected(false);
+      console.log("Disconnected from Twitch live server");
+    }
+  };
+
+  const toggleTwitchConnection = () => {
+    if (twitchConnected) disconnectTwitch();
+    else connectTwitch();
+  };
+
+  // -------------------------------------------------------------------------------------------
+  // tiktok api
+  // --------------------------------------------------------------------------------------------
+  const connectTikTokLive = () => {
+    if (tiktokSocketRef.current) return; // already connected
+
+    const socket = io("http://localhost:4000"); // your server URL
+    tiktokSocketRef.current = socket;
+
+    socket.on("connect", () => {
+      toast.success("✅ Connected to TikTok live server");
+      setTiktokConnected(true);
+    });
+
+    socket.on(
+      "initialData",
+      (data: { likers: string[]; viewers: string[] }) => {
+        likesRef.current = data.likers;
+        viewersRef.current = data.viewers;
+        rebuildDucksRef.current = true;
+        setLikers([...data.likers]);
+        setViewers([...data.viewers]);
+      }
+    );
+
+    socket.on("like", (data: { username: string; likers: string[] }) => {
+      likesRef.current = data.likers;
+      rebuildDucksRef.current = true;
+      setLikers([...data.likers]);
+    });
+
+    socket.on(
+      "viewerJoined",
+      (data: { username: string; viewers: string[] }) => {
+        viewersRef.current = data.viewers;
+        rebuildDucksRef.current = true;
+        setViewers([...data.viewers]);
+      }
+    );
+
+    socket.on("disconnect", () => {
+      toast.error("⚠️ Disconnected from TikTok live server");
+      setTiktokConnected(false);
+    });
+    socket.on("tiktokError", (data: { message: string }) => {
+      toast.error(`TikTok connection failed: ${data.message}`);
+    });
+  };
+  const disconnectTikTokLive = () => {
+    if (tiktokSocketRef.current) {
+      tiktokSocketRef.current.disconnect();
+      tiktokSocketRef.current = null;
+      setTiktokConnected(false);
+      console.log("Disconnected from TikTok live server");
+    }
+  };
+
+  const toggleTikTokConnection = () => {
+    if (tiktokConnected) {
+      disconnectTikTokLive();
+    } else {
+      connectTikTokLive();
+    }
+  };
+  // -------------------------------------------------------------------------------------------
   // Mock generator (likes + viewers)
-  // ---------------------------
-  useEffect(() => {
+  // --------------------------------------------------------------------------------------------
+  const startUserGenerator = () => {
     const likeNames = [
       "Anna",
       "Ben",
@@ -202,10 +350,11 @@ export default function CanvasExample() {
       "Max",
       "Niko",
     ];
-
     const viewerNames = Array.from({ length: 30 }, (_, i) => `Viewer${i + 1}`);
 
-    // Like generator: adds unique likes over time
+    // Prevent multiple generators
+    if ((window as any).mockGeneratorInterval) return;
+
     const likeInterval = window.setInterval(() => {
       const name = likeNames[Math.floor(Math.random() * likeNames.length)];
       setLikers((prev) => {
@@ -213,7 +362,7 @@ export default function CanvasExample() {
         const next = [...prev, name];
         likesRef.current = next;
         rebuildDucksRef.current = true;
-        // if enough participants and countdown not active, request countdown
+
         if (
           next.length + viewersRef.current.length >= MIN_USERS_REQUIRED &&
           !countdownActiveRef.current
@@ -224,22 +373,18 @@ export default function CanvasExample() {
       });
     }, 2000 + Math.random() * 3000);
 
-    // Viewer join/leave generator
     const viewerInterval = window.setInterval(() => {
       const name = viewerNames[Math.floor(Math.random() * viewerNames.length)];
       setViewers((prev) => {
         let next = [...prev];
         if (Math.random() > 0.5) {
-          // join
-          if (!next.includes(name)) {
-            next.push(name);
-          }
+          if (!next.includes(name)) next.push(name);
         } else {
-          // leave
           next = next.filter((v) => v !== name);
         }
         viewersRef.current = next;
         rebuildDucksRef.current = true;
+
         if (
           likesRef.current.length + next.length >= MIN_USERS_REQUIRED &&
           !countdownActiveRef.current
@@ -250,11 +395,24 @@ export default function CanvasExample() {
       });
     }, 1500 + Math.random() * 2500);
 
-    return () => {
-      clearInterval(likeInterval);
-      clearInterval(viewerInterval);
-    };
-  }, []);
+    // Save intervals to window for cleanup
+    (window as any).mockGeneratorInterval = [likeInterval, viewerInterval];
+  };
+
+  const toggleUserGenerator = () => {
+    const intervals = (window as any).mockGeneratorInterval;
+
+    if (intervals) {
+      // Stop generator
+      intervals.forEach((id: number) => clearInterval(id));
+      (window as any).mockGeneratorInterval = null;
+      console.log("Mock user generator stopped");
+    } else {
+      // Start generator
+      startUserGenerator();
+      console.log("Mock user generator started");
+    }
+  };
 
   // ---------------------------
   // startCountdown (moved to component scope so mock can toggle)
@@ -266,7 +424,7 @@ export default function CanvasExample() {
       countdownIntervalRef.current = null; // <--- THIS WAS MISSING
     }
 
-    setCountdown(60);
+    setCountdown(60); //--------------------------------------------------------------------countdown
     countdownRef.current = 60;
     startingLaneXRef.current = 80;
 
@@ -343,10 +501,10 @@ export default function CanvasExample() {
     offCtx.fillText(String(duck.num), 24, 39);
     return offCanvas;
   };
-  const MAX_DUCKS_PER_RACE = 80; // set maximum ducks per race
+  const MAX_DUCKS_PER_RACE = 70; // set maximum ducks per race------------------------------------------ducksnumber
 
   const buildDucksFromUsers = () => {
-    const likes = likesRef.current.slice(0, 9); // only up to 9 premium types
+    const likes = likesRef.current.slice(0, 15); // only up to 9 premium types--------------------------premducks
     const viewersList = viewersRef.current;
 
     const premiumTypes: Duck["type"][] = [
@@ -460,7 +618,7 @@ export default function CanvasExample() {
     buildDucksFromUsers();
 
     const FINISH_LINE = 600;
-    const RACE_DURATION = 120000;
+    const RACE_DURATION = 120000; //--------------------------------------------------RACE_DURATION
 
     const startRace = (time: number) => {
       raceStartedRef.current = true;
@@ -526,8 +684,8 @@ export default function CanvasExample() {
       }
 
       const FINISH_LANE_MOVE_DISTANCE = 900;
-      const FINISH_LANE_SPEED = 3;
-      const FINISH_LANE_DELAY = 2000;
+      const FINISH_LANE_SPEED = 2; //-------------------------------------------------speed finish lane
+      const FINISH_LANE_DELAY = 2000; //-----------------------------------------------finishlane calibrate
 
       if (raceStartedRef.current) {
         const now = time;
@@ -671,7 +829,7 @@ export default function CanvasExample() {
 
           // rebuild ducks from the latest mock lists and start countdown for next round
           buildDucksFromUsers();
-          countdownActiveRef.current = false; // allow next countdown to be triggered by mock
+          countdownActiveRef.current = true; // allow next countdown to be triggered by mock
 
           if (currentMusicRef.current !== idleMusicRef.current) {
             switchMusic(idleMusicRef.current); // <--- This might override the race music
@@ -846,13 +1004,23 @@ export default function CanvasExample() {
         />
       </div>
       <div className="bg-black/70 flex justify-center rounded space-x-5 bottom-[13%] right-[1%] border-2 border-white absolute px-4 py-2 w-[50%] text-sm">
-        <button className="w-[30%] hover:bg-white/20 px-6 py-1 rounded-2xl bg-black border-white border-2 ">
-          Connect to tiktok API
+        <button
+          onClick={toggleTikTokConnection}
+          className="w-[30%] hover:bg-white/20 px-6 py-1 rounded-2xl bg-black border-white border-2"
+        >
+          {tiktokConnected ? "Disconnect TikTok API" : "Connect TikTok API"}
         </button>
-        <button className="w-[30%] px-6 py-1 rounded-2xl hover:bg-violet-300 bg-violet-500 border-white border-2">
-          Connect to twitch API
+
+        <button
+          onClick={toggleTwitchConnection}
+          className="w-[30%] px-6 py-1 rounded-2xl hover:bg-violet-300 bg-violet-500 border-white border-2"
+        >
+          {twitchConnected ? "Disconnect from Twitch" : "Connect to Twitch API"}
         </button>
-        <button className="w-[30%] px-6 py-1 rounded-2xl hover:bg-yellow-300 bg-yellow-500 border-white border-2 ">
+        <button
+          onClick={toggleUserGenerator}
+          className="w-[30%] px-6 py-1 rounded-2xl hover:bg-yellow-300 bg-yellow-500 border-white border-2 "
+        >
           User Generator
         </button>
       </div>
@@ -864,6 +1032,18 @@ export default function CanvasExample() {
           Enable Sound
         </button>
       )}
+      {/* Toast container must be in the JSX */}
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
     </div>
   );
 }
