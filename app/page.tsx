@@ -135,7 +135,7 @@ export default function CanvasExample() {
 
   useEffect(() => {
     // ... inside useEffect for audio loading
-    idleMusicRef.current = new Audio("/music/Battleready.mp3");
+    idleMusicRef.current = new Audio("/music/racestart-2.mp3");
     raceMusicRef.current = new Audio("/music/race.mp3");
     winnerMusicRef.current = new Audio("/music/winnersound.mp3");
 
