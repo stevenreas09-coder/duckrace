@@ -6,6 +6,7 @@ import { useRef, useEffect, useState } from "react";
 import { startingLane } from "./componets/lane";
 import { FinishLane } from "./componets/finishlane";
 import { duckRegular } from "./componets/ducks/duks";
+import { DrawUsername } from "./componets/DrawUserName";
 import {
   duckPremiumTwo,
   duckPremiumOne,
@@ -123,6 +124,14 @@ export default function CanvasExample() {
   // New Twitch refs
   const twitchSocketRef = useRef<any>(null);
   const [twitchConnected, setTwitchConnected] = useState(false);
+
+  //raceduration
+  const [raceDuration, setRaceDuration] = useState(120000); // default 2 minutes
+  const raceDurationRef = useRef(raceDuration);
+
+  useEffect(() => {
+    raceDurationRef.current = raceDuration;
+  }, [raceDuration]);
 
   useEffect(() => {
     // ... inside useEffect for audio loading
@@ -513,7 +522,7 @@ export default function CanvasExample() {
       amplitude: 4 + Math.random() * 6,
       speed: 0.3 + Math.random() * 3,
       phase: Math.random() * Math.PI * 2,
-      type: premiumTypes[i] || "premium1",
+      type: premiumTypes[i % premiumTypes.length],
       baseX: 100,
       speedFactor: 0.9 + Math.random() * 0.05,
       boostApplied: false,
@@ -578,6 +587,32 @@ export default function CanvasExample() {
     rebuildDucksRef.current = false;
   };
 
+  const winnerAnimationRef = useRef({
+    scale: 0,
+    opacity: 0,
+    growing: true,
+    startTime: 0,
+  });
+
+  const confettiRef = useRef<
+    { x: number; y: number; size: number; color: string; velocityY: number }[]
+  >([]);
+
+  const generateConfetti = () => {
+    const colors = ["#ffd700", "#ff6347", "#00ffff", "#ff69b4", "#7fff00"];
+    const newConfetti = [];
+    for (let i = 0; i < 100; i++) {
+      newConfetti.push({
+        x: Math.random() * 800,
+        y: Math.random() * -300, // start above canvas
+        size: 5 + Math.random() * 5,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        velocityY: 2 + Math.random() * 3,
+      });
+    }
+    confettiRef.current = newConfetti;
+  };
+
   // ---------------------------
   // MAIN CANVAS EFFECT (single mount)
   // ---------------------------
@@ -605,8 +640,7 @@ export default function CanvasExample() {
     buildDucksFromUsers();
 
     const FINISH_LINE = 600;
-    const RACE_DURATION = 120000; //--------------------------------------------------RACE_DURATION
-
+    raceDurationRef.current = raceDuration; // keep it updated whenever state changes
     const startRace = (time: number) => {
       raceStartedRef.current = true;
       raceStartTimeRef.current = time;
@@ -649,7 +683,7 @@ export default function CanvasExample() {
 
       // Starting lane
       const targetX = -500;
-      const laneSpeed = 1.5;
+      const laneSpeed = 3;
       if (countdownRef.current === 0 && startingLaneXRef.current > targetX) {
         startingLaneXRef.current -= laneSpeed;
         if (startingLaneXRef.current < targetX)
@@ -671,15 +705,29 @@ export default function CanvasExample() {
       }
 
       const FINISH_LANE_MOVE_DISTANCE = 900;
-      const FINISH_LANE_SPEED = 2; //-------------------------------------------------speed finish lane
+      const FINISH_LANE_SPEED = 3; //-------------------------------------------------speed finish lane
       const FINISH_LANE_DELAY = 2000; //-----------------------------------------------finishlane calibrate
+      const TOTAL_DISTANCE_METERS = 100;
 
       if (raceStartedRef.current) {
         const now = time;
         const elapsed = now - raceStartTimeRef.current;
 
+        const distanceMeters = Math.min(
+          (elapsed / raceDurationRef.current) * TOTAL_DISTANCE_METERS,
+          TOTAL_DISTANCE_METERS
+        );
+
+        ctx.fillStyle = "white";
+        ctx.font = "bold 20px Arial";
+        ctx.textAlign = "left";
+
+        // Show meters
+        ctx.fillText(`Distance: ${distanceMeters.toFixed(1)}m`, 600, 40);
+        ctx.fillText("100 meters race", 600, 70);
+
         if (
-          elapsed >= RACE_DURATION - FINISH_LANE_DELAY &&
+          elapsed >= raceDurationRef.current - FINISH_LANE_DELAY &&
           finishLaneDirectionRef.current === 0
         )
           finishLaneDirectionRef.current = -1;
@@ -768,26 +816,80 @@ export default function CanvasExample() {
           d.x += (targetX - d.x) * smoothing;
         });
 
+        // Inside your loop
         if (winnerRef.current) {
-          ctx.fillStyle = "yellow";
-          ctx.font = "bold 40px Arial";
-          ctx.textAlign = "center";
+          const anim = winnerAnimationRef.current;
+          if (anim.startTime === 0) anim.startTime = time;
 
-          ctx.fillText(
-            `🏆 Winner: ${winnerRef.current.username}!`,
-            CANVAS_WIDTH / 2,
-            CANVAS_HEIGHT / 2
-          );
+          const elapsed = time - anim.startTime;
+
+          // Scale: 0 → 1.2 → 1 (bounce)
+          const t = Math.min(elapsed / 1000, 1); // 1 sec animation
+          anim.scale = 1 + 0.2 * Math.sin(t * Math.PI);
+
+          // Fade-in
+          anim.opacity = Math.min(t, 1);
+
+          ctx.save();
+          ctx.globalAlpha = anim.opacity;
+          ctx.font = `${40 * anim.scale}px Arial`;
+          ctx.textAlign = "center";
+          ctx.fillStyle = "white";
+          ctx.fillText("🎉 Congratulations 🎉", CANVAS_WIDTH / 2, 50);
+          ctx.fillText(`${winnerRef.current.username}!`, CANVAS_WIDTH / 2, 100);
+          ctx.restore();
+
+          // Fade-out after 3 seconds
+          if (elapsed > 3000) {
+            anim.opacity = 1 - (elapsed - 3000) / 1000; // fade out 1 sec
+            if (elapsed > 4000) {
+              winnerAnimationRef.current = {
+                scale: 0,
+                opacity: 0,
+                growing: true,
+                startTime: 0,
+              };
+            }
+          }
+        }
+
+        if (confettiRef.current.length > 0) {
+          confettiRef.current.forEach((c) => {
+            ctx.fillStyle = c.color;
+            ctx.beginPath();
+            ctx.arc(c.x, c.y, c.size, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Move down
+            c.y += c.velocityY;
+
+            // Reset if out of canvas
+            if (c.y > CANVAS_HEIGHT) c.y = Math.random() * -300;
+          });
         }
 
         // End race
-        if (elapsed >= RACE_DURATION && !winnerRef.current) {
+        if (elapsed >= raceDurationRef.current && !winnerRef.current) {
           const ducks = ducksRef.current;
           winnerRef.current = ducks.reduce((prev, curr) =>
             curr.x > prev.x ? curr : prev
           );
 
           winnerDisplayStartRef.current = now;
+          // Initialize animation
+          winnerAnimationRef.current = {
+            scale: 0,
+            opacity: 0,
+            growing: true,
+            startTime: now,
+          };
+          // Play winner music
+          if (currentMusicRef.current !== winnerMusicRef.current) {
+            switchMusic(winnerMusicRef.current);
+          }
+
+          // Generate confetti
+          generateConfetti();
           if (currentMusicRef.current !== winnerMusicRef.current) {
             switchMusic(winnerMusicRef.current); // play race music
             console.log("Starting race win..."); // Updated log/comment
@@ -813,6 +915,8 @@ export default function CanvasExample() {
           });
           winnerRef.current = null;
           raceStartedRef.current = false;
+
+          confettiRef.current = [];
 
           // rebuild ducks from the latest mock lists and start countdown for next round
           buildDucksFromUsers();
@@ -842,17 +946,11 @@ export default function CanvasExample() {
 
         // draw username above duck if present
         if (d.username) {
-          ctx.font = "bold 14px Arial"; // font
-          ctx.textAlign = "center"; // align
-          ctx.fillStyle = "white"; // fill color
-          ctx.strokeStyle = "black"; // outline color
-          ctx.lineWidth = 2; // outline thickness
-
-          // Draw the outline first
-          ctx.strokeText(d.username, d.x + 20, waveY - 10);
-
-          // Then fill the text
-          ctx.fillText(d.username, d.x + 20, waveY - 10);
+          if (d.type === "regular") {
+            DrawUsername(ctx, d.username, d.x + 20, waveY - 10);
+          } else {
+            DrawUsername(ctx, d.username, d.x + 20, waveY - 2);
+          }
         }
       });
 
@@ -960,6 +1058,19 @@ export default function CanvasExample() {
                       {l}
                     </span>
                   ))}
+                  {/* One extra span at the end */}
+                  {likers.length > 10 && (
+                    <span
+                      style={{
+                        background: "#ff7043",
+                        padding: "2px 6px",
+                        borderRadius: 6,
+                        fontSize: 12,
+                      }}
+                    >
+                      + {likers.length - 10} more
+                    </span>
+                  )}
                 </div>
 
                 <strong className="text-white mt-2 block">
@@ -979,6 +1090,19 @@ export default function CanvasExample() {
                       {v}
                     </span>
                   ))}
+                  {/* One extra span at the end */}
+                  {viewers.length > 10 && (
+                    <span
+                      style={{
+                        background: "#ff7043",
+                        padding: "2px 6px",
+                        borderRadius: 6,
+                        fontSize: 12,
+                      }}
+                    >
+                      + {likers.length - 10} more
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -988,7 +1112,7 @@ export default function CanvasExample() {
           ref={canvasRef}
           width={800}
           height={450}
-          className="border-4 border-violet-500 bg-[#378098] rounded-t"
+          className="border-4 border-black bg-[#378098] rounded-t"
         />
       </div>
       <div className="bg-black/70 flex justify-center rounded space-x-5 bottom-[13%] right-[1%] border-2 border-white absolute px-4 py-2 w-[50%] text-sm">
@@ -1032,6 +1156,17 @@ export default function CanvasExample() {
         draggable
         pauseOnHover
       />
+      <div className="absolute bottom-4 right-4 bg-black/50 p-2 rounded">
+        <label className="text-white mr-2">Race Duration (seconds):</label>
+        <input
+          type="number"
+          value={raceDuration / 1000}
+          min={10}
+          max={600}
+          onChange={(e) => setRaceDuration(Number(e.target.value) * 1000)}
+          className="w-20 p-1 rounded text-black"
+        />
+      </div>
     </div>
   );
 }
