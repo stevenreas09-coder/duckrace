@@ -3,10 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "node server/server.js",
+    "dev": "next dev",
     "build": "next build",
-    "start": "node server/server.js",
-    "lint": "eslint"
+    "start": "next start",
+    "lint": "eslint",
+    "live": "npx ts-node server/live.js",
+    "twitch": "npx ts-node server/twitch.js"
   },
   "dependencies": {
     "dotenv": "^17.2.3",
