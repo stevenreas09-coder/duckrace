@@ -1,4 +1,5 @@
 const { TikTokLiveConnection } = require("tiktok-live-connector");
+require("dotenv").config(); // Load .env variables
 
 module.exports = function attachLive(io) {
   let likers = new Set();
@@ -13,12 +14,19 @@ module.exports = function attachLive(io) {
   });
 
   const tiktokUsername = process.env.TIKTOK_USERNAME;
-  const liveConnection = new TikTokLiveConnection(tiktokUsername);
 
-  liveConnection
-    .connect()
-    .then(() => console.log("Connected to TikTok LIVE"))
-    .catch((err) => io.emit("tiktokError", { message: err.message }));
+  let liveConnection;
+  try {
+    liveConnection = new TikTokLiveConnection(tiktokUsername);
+    liveConnection
+      .connect()
+      .then(() => console.log("Connected to TikTok LIVE"))
+      .catch((err) => io.emit("tiktokError", { message: err.message }));
+  } catch (err) {
+    io.emit("tiktokError", { message: err.message });
+  }
+
+  if (!liveConnection) return;
 
   liveConnection.on("chat", (data) => {
     io.emit("comment", {

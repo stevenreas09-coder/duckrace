@@ -1,4 +1,5 @@
 const tmi = require("tmi.js");
+require("dotenv").config(); // Load .env variables
 
 module.exports = function attachTwitch(io) {
   let viewers = new Set();
