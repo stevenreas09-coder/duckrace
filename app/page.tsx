@@ -198,148 +198,113 @@ export default function CanvasExample() {
     }
   };
   // -------------------------------------------------------------------------------------------
-  // twitch api
-  // --------------------------------------------------------------------------------------------
-  const connectTwitch = () => {
-    if (twitchSocketRef.current) return;
+  // Unified Live API (Twitch + TikTok)
+  // -------------------------------------------------------------------------------------------
+  const connectLiveAPI = (platform: "twitch" | "tiktok") => {
+    if (platform === "twitch" && twitchSocketRef.current) return;
+    if (platform === "tiktok" && tiktokSocketRef.current) return;
 
-    const socket = io("http://localhost:4001");
-    twitchSocketRef.current = socket;
+    const socket = io("/"); // same server, can differentiate server-side if needed
+
+    if (platform === "twitch") twitchSocketRef.current = socket;
+    if (platform === "tiktok") tiktokSocketRef.current = socket;
 
     socket.on("connect", () => {
-      toast.success("✅ Connected to Twitch live server");
-      setTwitchConnected(true);
+      toast.success(`✅ Connected to ${platform} live server`);
+      if (platform === "twitch") setTwitchConnected(true);
+      if (platform === "tiktok") setTiktokConnected(true);
     });
 
-    socket.on("initialData", (data: { viewers: any[]; followers: any[] }) => {
-      // Normalize followers
-      const followersList = data.followers.map((f) =>
-        typeof f === "string" ? f : f.username
-      );
-
-      // Normalize viewers
-      const viewersList = data.viewers.map((v) =>
-        typeof v === "string" ? v : v.username
-      );
-
-      // Combine followers + existing likes/chat
-      const combinedLikers = Array.from(
-        new Set([...likesRef.current, ...followersList])
-      );
-
-      likesRef.current = combinedLikers; // store all likers
-      viewersRef.current = viewersList;
-      rebuildDucksRef.current = true;
-
-      setLikers(combinedLikers);
-      setViewers(viewersList);
-    });
-
-    socket.on("chat", (data: { username: string; message: string }) => {
-      const username = data.username;
-
-      if (!likesRef.current.includes(username)) {
-        likesRef.current = [...likesRef.current, username];
+    // Handle initial data
+    socket.on("initialData", (data: any) => {
+      if (platform === "twitch") {
+        const followersList = data.followers.map((f: any) =>
+          typeof f === "string" ? f : f.username
+        );
+        const viewersList = data.viewers.map((v: any) =>
+          typeof v === "string" ? v : v.username
+        );
+        const combinedLikers = Array.from(
+          new Set([...likesRef.current, ...followersList])
+        );
+        likesRef.current = combinedLikers;
+        viewersRef.current = viewersList;
         rebuildDucksRef.current = true;
-        setLikers([...likesRef.current]);
+
+        setLikers(combinedLikers);
+        setViewers(viewersList);
       }
 
-      // Optionally handle chat message display
-      console.log(data);
-    });
-
-    socket.on("viewerJoined", (data: { username: any; viewers: any[] }) => {
-      const viewersList = data.viewers.map((v) =>
-        typeof v === "string" ? v : v.username
-      );
-      viewersRef.current = viewersList;
-      setViewers(viewersList);
-    });
-
-    socket.on("disconnect", () => {
-      toast.error("⚠️ Disconnected from Twitch live server");
-      setTwitchConnected(false);
-    });
-  };
-
-  const disconnectTwitch = () => {
-    if (twitchSocketRef.current) {
-      twitchSocketRef.current.disconnect();
-      twitchSocketRef.current = null;
-      setTwitchConnected(false);
-      console.log("Disconnected from Twitch live server");
-    }
-  };
-
-  const toggleTwitchConnection = () => {
-    if (twitchConnected) disconnectTwitch();
-    else connectTwitch();
-  };
-
-  // -------------------------------------------------------------------------------------------
-  // tiktok api
-  // --------------------------------------------------------------------------------------------
-  const connectTikTokLive = () => {
-    if (tiktokSocketRef.current) return; // already connected
-
-    const socket = io("http://localhost:4000"); // your server URL
-    tiktokSocketRef.current = socket;
-
-    socket.on("connect", () => {
-      toast.success("✅ Connected to TikTok live server");
-      setTiktokConnected(true);
-    });
-
-    socket.on(
-      "initialData",
-      (data: { likers: string[]; viewers: string[] }) => {
+      if (platform === "tiktok") {
         likesRef.current = data.likers;
         viewersRef.current = data.viewers;
         rebuildDucksRef.current = true;
         setLikers([...data.likers]);
         setViewers([...data.viewers]);
       }
-    );
+    });
 
-    socket.on("like", (data: { username: string; likers: string[] }) => {
+    // Handle chat / likes
+    socket.on("chat", (data: any) => {
+      if (platform !== "twitch") return;
+      const username = data.username;
+      if (!likesRef.current.includes(username)) {
+        likesRef.current = [...likesRef.current, username];
+        rebuildDucksRef.current = true;
+        setLikers([...likesRef.current]);
+      }
+      console.log(data);
+    });
+
+    socket.on("like", (data: any) => {
+      if (platform !== "tiktok") return;
       likesRef.current = data.likers;
       rebuildDucksRef.current = true;
       setLikers([...data.likers]);
     });
 
-    socket.on(
-      "viewerJoined",
-      (data: { username: string; viewers: string[] }) => {
-        viewersRef.current = data.viewers;
-        rebuildDucksRef.current = true;
-        setViewers([...data.viewers]);
-      }
-    );
+    // Viewer joined
+    socket.on("viewerJoined", (data: any) => {
+      const viewersList = data.viewers;
+      viewersRef.current = viewersList;
+      setViewers(viewersList);
+      rebuildDucksRef.current = true;
+    });
 
     socket.on("disconnect", () => {
-      toast.error("⚠️ Disconnected from TikTok live server");
-      setTiktokConnected(false);
+      toast.error(`⚠️ Disconnected from ${platform} live server`);
+      if (platform === "twitch") setTwitchConnected(false);
+      if (platform === "tiktok") setTiktokConnected(false);
     });
-    socket.on("tiktokError", (data: { message: string }) => {
-      toast.error(`TikTok connection failed: ${data.message}`);
-    });
-  };
-  const disconnectTikTokLive = () => {
-    if (tiktokSocketRef.current) {
-      tiktokSocketRef.current.disconnect();
-      tiktokSocketRef.current = null;
-      setTiktokConnected(false);
-      console.log("Disconnected from TikTok live server");
+
+    if (platform === "tiktok") {
+      socket.on("tiktokError", (data: { message: string }) => {
+        toast.error(`TikTok connection failed: ${data.message}`);
+      });
     }
   };
 
-  const toggleTikTokConnection = () => {
-    if (tiktokConnected) {
-      disconnectTikTokLive();
-    } else {
-      connectTikTokLive();
+  const disconnectLiveAPI = (platform: "twitch" | "tiktok") => {
+    const socketRef =
+      platform === "twitch" ? twitchSocketRef.current : tiktokSocketRef.current;
+    if (socketRef) {
+      socketRef.disconnect();
+      if (platform === "twitch") twitchSocketRef.current = null;
+      if (platform === "tiktok") tiktokSocketRef.current = null;
+
+      if (platform === "twitch") setTwitchConnected(false);
+      if (platform === "tiktok") setTiktokConnected(false);
+
+      console.log(`Disconnected from ${platform} live server`);
     }
   };
+
+  const toggleLiveAPI = (platform: "twitch" | "tiktok") => {
+    const connected = platform === "twitch" ? twitchConnected : tiktokConnected;
+    if (connected) disconnectLiveAPI(platform);
+    else connectLiveAPI(platform);
+  };
+
   // -------------------------------------------------------------------------------------------
   // Mock generator (likes + viewers) using JSON file
   // --------------------------------------------------------------------------------------------
@@ -1117,14 +1082,14 @@ export default function CanvasExample() {
       </div>
       <div className="bg-black/70 flex justify-center rounded space-x-5 bottom-[13%] right-[1%] border-2 border-white absolute px-4 py-2 w-[50%] text-sm">
         <button
-          onClick={toggleTikTokConnection}
+          onClick={() => toggleLiveAPI("tiktok")}
           className="w-[30%] hover:bg-white/20 px-6 py-1 rounded-2xl bg-black border-white border-2"
         >
           {tiktokConnected ? "Disconnect TikTok API" : "Connect TikTok API"}
         </button>
 
         <button
-          onClick={toggleTwitchConnection}
+          onClick={() => toggleLiveAPI("twitch")}
           className="w-[30%] px-6 py-1 rounded-2xl hover:bg-violet-300 bg-violet-500 border-white border-2"
         >
           {twitchConnected ? "Disconnect from Twitch" : "Connect to Twitch API"}
