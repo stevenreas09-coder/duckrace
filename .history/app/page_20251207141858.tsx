@@ -51,7 +51,7 @@ type Duck = {
   boostStartTime?: number;
   boostDuration?: number;
   boostTarget?: number;
-  username?: string;
+  username?: string; // added so ducks can carry assigned username (mock)
 };
 const colors = [
   "text-red-300", // lighter red
@@ -65,11 +65,6 @@ const colors = [
   "text-purple-300", // light purple
   "text-indigo-300", // light indigo
 ];
-type Viewer = {
-  uniqueId: string;
-  nickname: string;
-  avatar: string;
-};
 
 export default function CanvasExample() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -91,9 +86,9 @@ export default function CanvasExample() {
   const MIN_USERS_REQUIRED = 20;
 
   const [likers, setLikers] = useState<string[]>([]);
-  const [viewers, setViewers] = useState<Viewer[]>([]);
+  const [viewers, setViewers] = useState<string[]>([]);
   const likesRef = useRef<string[]>([]);
-  const viewersRef = useRef<Viewer[]>([]);
+  const viewersRef = useRef<string[]>([]);
   likesRef.current = likers;
   viewersRef.current = viewers;
 
@@ -287,84 +282,54 @@ export default function CanvasExample() {
   const connectTikTokLive = () => {
     if (tiktokSocketRef.current) return; // already connected
 
-    const socket = io("http://localhost:4000", {
-      transports: ["websocket"],
-    });
-
+    const socket = io("http://localhost:4000"); // your server URL
     tiktokSocketRef.current = socket;
 
-    // ======================
-    // CONNECT
-    // ======================
     socket.on("connect", () => {
       toast.success("✅ Connected to TikTok live server");
       setTiktokConnected(true);
     });
 
-    // ======================
-    // INITIAL SNAPSHOT
-    // ======================
-    socket.on("initial-data", (data) => {
-      likesRef.current = data.likers || [];
-      viewersRef.current = data.viewers || [];
-
-      rebuildDucksRef.current = true;
-
-      setLikers([...likesRef.current]);
-      setViewers([...viewersRef.current]);
-    });
-
-    // ======================
-    // LIKE EVENT
-    // ======================
-    socket.on("tiktok-like", (data) => {
-      if (!data?.user) return;
-
-      if (!likesRef.current.includes(data.user)) {
-        likesRef.current = [...likesRef.current, data.user];
+    socket.on(
+      "initialData",
+      (data: { likers: string[]; viewers: string[] }) => {
+        likesRef.current = data.likers;
+        viewersRef.current = data.viewers;
         rebuildDucksRef.current = true;
-        setLikers([...likesRef.current]);
+        setLikers([...data.likers]);
+        setViewers([...data.viewers]);
       }
-    });
+    );
 
-    // ======================
-    // CHAT EVENT
-    // ======================
-    socket.on("tiktok-chat", (data) => {
-      // optional: if chatters count as likers
-      if (data?.user && !likesRef.current.includes(data.user)) {
-        likesRef.current = [...likesRef.current, data.user];
-        rebuildDucksRef.current = true;
-        setLikers([...likesRef.current]);
-      }
-    });
-
-    // ======================
-    // ROOM USER (VIEWERS)
-    // ======================
-    socket.on("room-user", (data) => {
-      viewersRef.current = data.viewers || [];
+    socket.on("like", (data: { username: string; likers: string[] }) => {
+      likesRef.current = data.likers;
       rebuildDucksRef.current = true;
-
-      setViewers([...viewersRef.current]);
+      setLikers([...data.username, ...data.likers]);
     });
 
-    // ======================
-    // DISCONNECT
-    // ======================
+    socket.on("comment", (data: { username: string; likers: string[] }) => {
+      likesRef.current = data.likers;
+      rebuildDucksRef.current = true;
+      setLikers([...data.username, ...data.likers]);
+    });
+
+    socket.on(
+      "viewerJoined",
+      (data: { username: string; viewers: string[] }) => {
+        viewersRef.current = data.viewers;
+        rebuildDucksRef.current = true;
+        setViewers([...data.viewers]);
+      }
+    );
+
     socket.on("disconnect", () => {
       toast.error("⚠️ Disconnected from TikTok live server");
       setTiktokConnected(false);
     });
-
-    // ======================
-    // OPTIONAL ERROR EVENT
-    // ======================
-    socket.on("tiktokError", (data) => {
+    socket.on("tiktokError", (data: { message: string }) => {
       toast.error(`TikTok connection failed: ${data.message}`);
     });
   };
-
   const disconnectTikTokLive = () => {
     if (tiktokSocketRef.current) {
       tiktokSocketRef.current.disconnect();
@@ -384,23 +349,18 @@ export default function CanvasExample() {
 
   // -------------------------------------------------------------------------------------------
   // Mock generator (likes + viewers) using JSON file
-  // -------------------------------------------------------------------------------------------
+  // --------------------------------------------------------------------------------------------
   const startUserGenerator = () => {
-    const likeNames = mockUsers.likeNames; // string[]
-    const viewerUsers = mockUsers.viewerUsers; // { uniqueId, nickname, avatar }[]
+    const likeNames = mockUsers.likeNames;
+    const viewerNames = mockUsers.viewerNames;
 
     // Prevent multiple generators
     if ((window as any).mockGeneratorInterval) return;
 
-    // --------------------------
-    // Likes generator
-    // --------------------------
     const likeInterval = window.setInterval(() => {
       const name = likeNames[Math.floor(Math.random() * likeNames.length)];
-
       setLikers((prev) => {
         if (prev.includes(name)) return prev;
-
         const next = [...prev, name];
         likesRef.current = next;
         rebuildDucksRef.current = true;
@@ -411,28 +371,19 @@ export default function CanvasExample() {
         ) {
           countdownActiveRef.current = true;
         }
-
         return next;
       });
     }, 2000 + Math.random() * 3000);
 
-    // --------------------------
-    // Viewers generator
-    // --------------------------
     const viewerInterval = window.setInterval(() => {
-      const randomViewer =
-        viewerUsers[Math.floor(Math.random() * viewerUsers.length)];
-
+      const name = viewerNames[Math.floor(Math.random() * viewerNames.length)];
       setViewers((prev) => {
         let next = [...prev];
 
-        // Random join/leave
         if (Math.random() > 0.5) {
-          if (!next.find((v) => v.uniqueId === randomViewer.uniqueId)) {
-            next.push(randomViewer);
-          }
+          if (!next.includes(name)) next.push(name);
         } else {
-          next = next.filter((v) => v.uniqueId !== randomViewer.uniqueId);
+          next = next.filter((v) => v !== name);
         }
 
         viewersRef.current = next;
@@ -444,7 +395,6 @@ export default function CanvasExample() {
         ) {
           countdownActiveRef.current = true;
         }
-
         return next;
       });
     }, 1500 + Math.random() * 2500);
@@ -587,7 +537,7 @@ export default function CanvasExample() {
       username,
     }));
 
-    const newRegularDucks: Duck[] = viewersList.map((viewer, i) => ({
+    const newRegularDucks: Duck[] = viewersList.map((username, i) => ({
       x: 0,
       y: 0,
       num: newPremiumDucks.length + i + 1,
@@ -597,9 +547,7 @@ export default function CanvasExample() {
       type: "regular",
       baseX: 100,
       speedFactor: 0.9 + Math.random() * 0.05,
-      username: viewer.uniqueId, // logic-safe
-      displayName: viewer.nickname, // OPTIONAL (UI)
-      avatar: viewer.avatar,
+      username,
     }));
 
     const combined = [...newPremiumDucks, ...newRegularDucks]
@@ -1085,11 +1033,11 @@ export default function CanvasExample() {
                     const colorClass = colors[i % colors.length];
                     return (
                       <div
-                        key={p.nickname}
+                        key={p}
                         className={`leaderboard-item ${colorClass}`}
                         style={{ animationDelay: `${i * 0.1}s` }}
                       >
-                        <h1 className="username">{p.uniqueId}</h1>
+                        <h1 className="username">{p}</h1>
                         <span className="status">is playing</span>
                       </div>
                     );
@@ -1138,7 +1086,7 @@ export default function CanvasExample() {
                 <div className="mt-2 flex flex-wrap gap-2 overflow-auto">
                   {viewers.slice(0, 10).map((v) => (
                     <span
-                      key={v.nickname}
+                      key={v}
                       style={{
                         background: "#90caf9",
                         padding: "2px 4px",
@@ -1146,7 +1094,7 @@ export default function CanvasExample() {
                         fontSize: 12,
                       }}
                     >
-                      {v.uniqueId}
+                      {v}
                     </span>
                   ))}
                   {/* One extra span at the end */}

@@ -1,0 +1,117 @@
+import { createServer } from "http";
+import { Server } from "socket.io";
+import { TikTokLiveConnection, WebcastEvent } from "tiktok-live-connector";
+
+// ===============================
+// 1. Server setup
+// ===============================
+const httpServer = createServer();
+const io = new Server(httpServer, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+  },
+});
+
+const tiktokUsername = "yournameis4u";
+const connection = new TikTokLiveConnection(tiktokUsername);
+
+// ===============================
+// 2. In-memory state
+// ===============================
+const chats = [];
+const likers = new Set();
+const viewers = new Map();
+
+// ===============================
+// 3. TikTok connection
+// ===============================
+connection
+  .connect()
+  .then((state) => {
+    console.info(`✅ Connected to TikTok Room: ${state.roomId}`);
+  })
+  .catch((err) => {
+    console.error("❌ TikTok Connection Error:", err);
+  });
+
+// ===============================
+// 4. Socket.io connection
+// ===============================
+io.on("connection", (socket) => {
+  console.log("🟢 Frontend connected:", socket.id);
+
+  socket.emit("initial-data", {
+    chats,
+    likers: Array.from(likers),
+    viewers: Array.from(viewers.values()),
+  });
+});
+
+// ===============================
+// 5. TikTok Events
+// ===============================
+
+// CHAT
+connection.on(WebcastEvent.CHAT, (data) => {
+  const chat = {
+    user: data.uniqueId,
+    comment: data.comment,
+    profilePictureUrl: data.profilePictureUrl,
+    timestamp: Date.now(),
+  };
+
+  chats.push(chat);
+  if (chats.length > 100) chats.shift();
+
+  io.emit("tiktok-chat", chat);
+});
+
+// GIFT
+connection.on(WebcastEvent.GIFT, (data) => {
+  io.emit("tiktok-gift", {
+    user: data.uniqueId,
+    giftId: data.giftId,
+    count: data.repeatCount,
+  });
+});
+
+// LIKE
+connection.on(WebcastEvent.LIKE, (data) => {
+  if (data.uniqueId) {
+    likers.add(data.uniqueId);
+  }
+
+  io.emit("tiktok-like", {
+    user: data.uniqueId,
+    likeCount: data.likeCount,
+    nickname: data.nickname,
+  });
+});
+
+// ROOM USER
+connection.on(WebcastEvent.ROOM_USER, (data) => {
+  data.topViewers?.forEach((v) => {
+    const user = v.user;
+    if (!user?.uniqueId) return;
+
+    viewers.set(user.uniqueId, {
+      uniqueId: user.uniqueId,
+      nickname: user.nickname,
+      avatar: user.profilePictureUrl,
+    });
+  });
+
+  io.emit("room-user", {
+    viewers: Array.from(viewers.values()),
+    viewerCount: data.viewerCount,
+  });
+});
+
+// ===============================
+// 6. Start server
+// ===============================
+const PORT = 4000;
+httpServer.listen(PORT, () => {
+  console.log(`🚀 Socket server running on http://localhost:${PORT}`);
+});

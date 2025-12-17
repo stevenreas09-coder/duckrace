@@ -51,7 +51,7 @@ type Duck = {
   boostStartTime?: number;
   boostDuration?: number;
   boostTarget?: number;
-  username?: string;
+  username?: string; // added so ducks can carry assigned username (mock)
 };
 const colors = [
   "text-red-300", // lighter red
@@ -65,11 +65,6 @@ const colors = [
   "text-purple-300", // light purple
   "text-indigo-300", // light indigo
 ];
-type Viewer = {
-  uniqueId: string;
-  nickname: string;
-  avatar: string;
-};
 
 export default function CanvasExample() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -91,9 +86,9 @@ export default function CanvasExample() {
   const MIN_USERS_REQUIRED = 20;
 
   const [likers, setLikers] = useState<string[]>([]);
-  const [viewers, setViewers] = useState<Viewer[]>([]);
+  const [viewers, setViewers] = useState<string[]>([]);
   const likesRef = useRef<string[]>([]);
-  const viewersRef = useRef<Viewer[]>([]);
+  const viewersRef = useRef<string[]>([]);
   likesRef.current = likers;
   viewersRef.current = viewers;
 
@@ -384,23 +379,18 @@ export default function CanvasExample() {
 
   // -------------------------------------------------------------------------------------------
   // Mock generator (likes + viewers) using JSON file
-  // -------------------------------------------------------------------------------------------
+  // --------------------------------------------------------------------------------------------
   const startUserGenerator = () => {
-    const likeNames = mockUsers.likeNames; // string[]
-    const viewerUsers = mockUsers.viewerUsers; // { uniqueId, nickname, avatar }[]
+    const likeNames = mockUsers.likeNames;
+    const viewerNames = mockUsers.viewerNames;
 
     // Prevent multiple generators
     if ((window as any).mockGeneratorInterval) return;
 
-    // --------------------------
-    // Likes generator
-    // --------------------------
     const likeInterval = window.setInterval(() => {
       const name = likeNames[Math.floor(Math.random() * likeNames.length)];
-
       setLikers((prev) => {
         if (prev.includes(name)) return prev;
-
         const next = [...prev, name];
         likesRef.current = next;
         rebuildDucksRef.current = true;
@@ -411,28 +401,19 @@ export default function CanvasExample() {
         ) {
           countdownActiveRef.current = true;
         }
-
         return next;
       });
     }, 2000 + Math.random() * 3000);
 
-    // --------------------------
-    // Viewers generator
-    // --------------------------
     const viewerInterval = window.setInterval(() => {
-      const randomViewer =
-        viewerUsers[Math.floor(Math.random() * viewerUsers.length)];
-
+      const name = viewerNames[Math.floor(Math.random() * viewerNames.length)];
       setViewers((prev) => {
         let next = [...prev];
 
-        // Random join/leave
         if (Math.random() > 0.5) {
-          if (!next.find((v) => v.uniqueId === randomViewer.uniqueId)) {
-            next.push(randomViewer);
-          }
+          if (!next.includes(name)) next.push(name);
         } else {
-          next = next.filter((v) => v.uniqueId !== randomViewer.uniqueId);
+          next = next.filter((v) => v !== name);
         }
 
         viewersRef.current = next;
@@ -444,7 +425,6 @@ export default function CanvasExample() {
         ) {
           countdownActiveRef.current = true;
         }
-
         return next;
       });
     }, 1500 + Math.random() * 2500);
@@ -1085,11 +1065,11 @@ export default function CanvasExample() {
                     const colorClass = colors[i % colors.length];
                     return (
                       <div
-                        key={p.nickname}
+                        key={p}
                         className={`leaderboard-item ${colorClass}`}
                         style={{ animationDelay: `${i * 0.1}s` }}
                       >
-                        <h1 className="username">{p.uniqueId}</h1>
+                        <h1 className="username">{p}</h1>
                         <span className="status">is playing</span>
                       </div>
                     );
@@ -1138,7 +1118,7 @@ export default function CanvasExample() {
                 <div className="mt-2 flex flex-wrap gap-2 overflow-auto">
                   {viewers.slice(0, 10).map((v) => (
                     <span
-                      key={v.nickname}
+                      key={v}
                       style={{
                         background: "#90caf9",
                         padding: "2px 4px",
@@ -1146,7 +1126,7 @@ export default function CanvasExample() {
                         fontSize: 12,
                       }}
                     >
-                      {v.uniqueId}
+                      {v}
                     </span>
                   ))}
                   {/* One extra span at the end */}
