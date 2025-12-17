@@ -23,6 +23,7 @@ const chats = [];
 const likers = new Map();
 const viewers = new Map();
 
+console.log(viewers);
 // ===============================
 // 3. TikTok connection
 // ===============================
@@ -43,10 +44,8 @@ io.on("connection", (socket) => {
 
   socket.emit("initial-data", {
     chats,
-    likers: Array.from(likers.entries()).map(([userId, info]) => ({
-      userId, // key from Map
-      nickname: info.nickname, // from Map value
-      avatar: info.avatar, // from Map value
+    likers: Array.from(likers.entries()).map(([username, info]) => ({
+      username,
       likeCount: info.likeCount,
     })),
     viewers: Array.from(viewers.values()),
@@ -59,7 +58,6 @@ io.on("connection", (socket) => {
 
 // CHAT
 connection.on(WebcastEvent.CHAT, (data) => {
-  console.log("CHAT event received:", data); // <-- debug
   const chat = {
     user: data.uniqueId,
     comment: data.comment,
@@ -73,36 +71,33 @@ connection.on(WebcastEvent.CHAT, (data) => {
   io.emit("tiktok-chat", chat);
 });
 
-// LIKE
-connection.on(WebcastEvent.LIKE, (data) => {
-  console.log("LIKE event received:", data); // debug
-
-  const userId = data.user?.userId;
-  if (!userId) return;
-
-  likers.set(userId, {
-    nickname: data.user.nickname,
-    avatar: data.user.profilePicture?.mUri,
-    likeCount: data.likeCount,
+// GIFT
+connection.on(WebcastEvent.GIFT, (data) => {
+  io.emit("tiktok-gift", {
+    user: data.uniqueId,
+    giftId: data.giftId,
+    count: data.repeatCount,
   });
-
-  io.emit(
-    "tiktok-like",
-    Array.from(likers.entries()).map(([userId, info]) => ({
-      userId,
-      nickname: info.nickname,
-      avatar: info.avatar,
-      likeCount: info.likeCount,
-    }))
-  );
 });
 
-// ROOM_USER
-connection.on(WebcastEvent.ROOM_USER, (data) => {
-  console.log("ROOM_USER event received:", data.ranksList);
+// LIKE
+// 5. Listen for Likes
+connection.on(WebcastEvent.LIKE, (data) => {
+  if (data.uniqueId) {
+    likers.set(data.uniqueId, { likeCount: data.likeCount });
+    io.emit(
+      "tiktok-like",
+      Array.from(likers.entries()).map(([username, info]) => ({
+        username,
+        likeCount: info.likeCount,
+      }))
+    );
+  }
+});
 
-  data.ranksList?.forEach((v) => {
-    console.log(v.user);
+// ROOM USER
+connection.on(WebcastEvent.ROOM_USER, (data) => {
+  data.topViewers?.forEach((v) => {
     const user = v.user;
     if (!user?.uniqueId) return;
 

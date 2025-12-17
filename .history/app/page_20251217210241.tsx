@@ -1075,7 +1075,7 @@ export default function CanvasExample() {
   }, []); // single mount
 
   return (
-    <div className="w-screen relative h-[150vh] flex flex-col pl-6 pr-10 pt-10 bg-white overflow-hidden">
+    <div className="w-screen relative h-[150vh] flex flex-col pl-6 pr-10 pt-10 bg-black overflow-hidden">
       <div className="flex justify-start items-start flex-none">
         <div className="w-full h-full bg-white flex flex-col mt-[-40] px-4 pb-4">
           {/* Outer border container */}

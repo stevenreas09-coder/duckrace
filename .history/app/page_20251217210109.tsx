@@ -1134,6 +1134,38 @@ export default function CanvasExample() {
                     </span>
                   )}
                 </div>
+
+                <strong className="text-white mt-2 block">
+                  Active Viewers
+                </strong>
+                <div className="mt-2 flex flex-wrap gap-2 overflow-auto">
+                  {viewers.slice(0, 10).map((v) => (
+                    <span
+                      key={v.nickname}
+                      style={{
+                        background: "#90caf9",
+                        padding: "2px 4px",
+                        borderRadius: 6,
+                        fontSize: 12,
+                      }}
+                    >
+                      {v.uniqueId}
+                    </span>
+                  ))}
+                  {/* One extra span at the end */}
+                  {viewers.length > 10 && (
+                    <span
+                      style={{
+                        background: "#ff7043",
+                        padding: "2px 6px",
+                        borderRadius: 6,
+                        fontSize: 12,
+                      }}
+                    >
+                      + {likers.length - 10} more
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </div>

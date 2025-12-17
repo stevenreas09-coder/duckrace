@@ -43,10 +43,8 @@ io.on("connection", (socket) => {
 
   socket.emit("initial-data", {
     chats,
-    likers: Array.from(likers.entries()).map(([userId, info]) => ({
-      userId, // key from Map
-      nickname: info.nickname, // from Map value
-      avatar: info.avatar, // from Map value
+    likers: Array.from(likers.entries()).map(([username, info]) => ({
+      username,
       likeCount: info.likeCount,
     })),
     viewers: Array.from(viewers.values()),
@@ -75,34 +73,23 @@ connection.on(WebcastEvent.CHAT, (data) => {
 
 // LIKE
 connection.on(WebcastEvent.LIKE, (data) => {
-  console.log("LIKE event received:", data); // debug
-
-  const userId = data.user?.userId;
-  if (!userId) return;
-
-  likers.set(userId, {
-    nickname: data.user.nickname,
-    avatar: data.user.profilePicture?.mUri,
-    likeCount: data.likeCount,
-  });
-
-  io.emit(
-    "tiktok-like",
-    Array.from(likers.entries()).map(([userId, info]) => ({
-      userId,
-      nickname: info.nickname,
-      avatar: info.avatar,
-      likeCount: info.likeCount,
-    }))
-  );
+  console.log("LIKE event received:", data); // <-- debug
+  if (data.uniqueId) {
+    likers.set(data.uniqueId, { likeCount: data.likeCount });
+    io.emit(
+      "tiktok-like",
+      Array.from(likers.entries()).map(([username, info]) => ({
+        username,
+        likeCount: info.likeCount,
+      }))
+    );
+  }
 });
 
 // ROOM_USER
 connection.on(WebcastEvent.ROOM_USER, (data) => {
-  console.log("ROOM_USER event received:", data.ranksList);
-
-  data.ranksList?.forEach((v) => {
-    console.log(v.user);
+  console.log("ROOM_USER event received:", data); // <-- debug
+  data.topViewers?.forEach((v) => {
     const user = v.user;
     if (!user?.uniqueId) return;
 

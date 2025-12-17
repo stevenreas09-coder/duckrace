@@ -81,9 +81,9 @@ connection.on(WebcastEvent.LIKE, (data) => {
   if (!userId) return;
 
   likers.set(userId, {
+    likeCount: data.likeCount,
     nickname: data.user.nickname,
     avatar: data.user.profilePicture?.mUri,
-    likeCount: data.likeCount,
   });
 
   io.emit(

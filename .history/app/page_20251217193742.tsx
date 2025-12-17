@@ -52,9 +52,6 @@ type Duck = {
   boostDuration?: number;
   boostTarget?: number;
   username?: string;
-  displayName?: string;
-  avatar?: string;
-  likeCount?: number;
 };
 const colors = [
   "text-red-300", // lighter red
@@ -139,7 +136,7 @@ export default function CanvasExample() {
   const [twitchConnected, setTwitchConnected] = useState(false);
 
   //raceduration
-  const [raceDuration, setRaceDuration] = useState(180000); // default 2 minutes
+  const [raceDuration, setRaceDuration] = useState(120000); // default 2 minutes
   const raceDurationRef = useRef(raceDuration);
 
   console.log(`${likers}likers`);
@@ -354,38 +351,22 @@ export default function CanvasExample() {
     const likeInterval = window.setInterval(() => {
       const randomName =
         likeNames[Math.floor(Math.random() * likeNames.length)];
-      const stableUserId = `mock-${randomName}`; // stable per user
+      const randomLikeCount = Math.floor(Math.random() * 30) + 1; // 1-30 likes
+      const randomUserId = `mock-${Math.floor(Math.random() * 100000)}`; // mock userId
 
       setLikers((prev) => {
-        let next = [...prev];
-        const existing = next.find((u) => u.userId === stableUserId);
+        // check if user already exists
+        if (prev.find((u) => u.userId === randomUserId)) return prev;
 
-        if (existing) {
-          // Random chance to leave
-          if (Math.random() > 0.7) {
-            next = next.filter((u) => u.userId !== stableUserId);
-          } else {
-            // Random like boost while staying
-            next = next.map((u) =>
-              u.userId === stableUserId
-                ? {
-                    ...u,
-                    likeCount: u.likeCount + (Math.random() > 0.7 ? 5 : 2),
-                  }
-                : u
-            );
-          }
-        } else {
-          // Random chance to join
-          if (Math.random() > 0.5) {
-            next.push({
-              userId: stableUserId,
-              nickname: randomName,
-              avatar: "",
-              likeCount: Math.floor(Math.random() * 30) + 5, // 1–20 start
-            });
-          }
-        }
+        const next = [
+          ...prev,
+          {
+            userId: randomUserId,
+            nickname: randomName,
+            avatar: "", // optional, can assign a placeholder
+            likeCount: randomLikeCount,
+          },
+        ];
 
         likesRef.current = next;
         rebuildDucksRef.current = true;
@@ -399,7 +380,7 @@ export default function CanvasExample() {
 
         return next;
       });
-    }, 10000 + Math.random() * 5000);
+    }, 2000 + Math.random() * 3000);
 
     // --------------------------
     // Viewers generator
@@ -432,7 +413,7 @@ export default function CanvasExample() {
 
         return next;
       });
-    }, 7000 + Math.random() * 10000);
+    }, 1500 + Math.random() * 2500);
 
     (window as any).mockGeneratorInterval = [likeInterval, viewerInterval];
   };
@@ -542,10 +523,7 @@ export default function CanvasExample() {
   const MAX_DUCKS_PER_RACE = 70; // set maximum ducks per race------------------------------------------ducksnumber
 
   const buildDucksFromUsers = () => {
-    const likes = [...likesRef.current]
-      .sort((a, b) => b.likeCount - a.likeCount) // 🔥 MOST IMPORTANT LINE
-      .slice(0, 15);
-    //types--------------------------premducks
+    const likes = likesRef.current.slice(0, 15); // only up to 9 premium types--------------------------premducks
     const viewersList = viewersRef.current;
 
     const premiumTypes: Duck["type"][] = [
@@ -563,15 +541,36 @@ export default function CanvasExample() {
     const newPremiumDucks: Duck[] = likes.map((user, i) => {
       let type: Duck["type"];
 
-      if (user.likeCount >= 45) type = "premium1";
-      else if (user.likeCount >= 40) type = "premium2";
-      else if (user.likeCount >= 35) type = "premium3";
-      else if (user.likeCount >= 30) type = "premium4";
-      else if (user.likeCount >= 25) type = "premium5";
-      else if (user.likeCount >= 20) type = "premium6";
-      else if (user.likeCount >= 15) type = "premium7";
-      else if (user.likeCount >= 10) type = "premium8";
-      else type = "premium9";
+      // assign type based on likeCount
+      switch (user.likeCount) {
+        case 5:
+          type = "premium9";
+          break;
+        case 10:
+          type = "premium7";
+          break;
+        case 15:
+          type = "premium6";
+          break;
+        case 20:
+          type = "premium5";
+          break;
+        case 25:
+          type = "premium4";
+          break;
+        case 30:
+          type = "premium3";
+          break;
+        case 35:
+          type = "premium2";
+          break;
+        case 40:
+          type = "premium1";
+          break;
+        case 45:
+        default:
+          type = "premium9"; // fallback type for other counts
+      }
 
       return {
         x: 0,
@@ -1075,16 +1074,16 @@ export default function CanvasExample() {
   }, []); // single mount
 
   return (
-    <div className="w-screen relative h-[150vh] flex flex-col pl-6 pr-10 pt-10 bg-white overflow-hidden">
+    <div className="w-screen relative h-screen flex flex-col p-2 bg-gray-500 overflow-hidden">
       <div className="flex justify-start items-start flex-none">
-        <div className="w-full h-full bg-white flex flex-col mt-[-40] px-4 pb-4">
+        <div className="w-full h-full flex flex-col px-4 pb-4">
           {/* Outer border container */}
           <div className="w-full h-full border-2 border-white rounded-lg overflow-hidden">
-            <div className="w-full min-h-screen flex flex-col p-2 text-sm text-black shadow-2xl">
+            <div className="w-full h-full flex flex-col bg-black/80 p-2 text-sm text-black shadow-2xl">
               {/* Leaderboard panel */}
-              <div className="leaderboard-container bg-white flex-1 overflow-hidden mb-2">
+              <div className="leaderboard-container flex-1 overflow-hidden mb-2">
                 <div className="leaderboard">
-                  {viewers.slice(-5).map((p, i) => {
+                  {viewers.slice(-6).map((p, i) => {
                     const colorClass = colors[i % colors.length];
                     return (
                       <div
@@ -1102,10 +1101,10 @@ export default function CanvasExample() {
 
               {/* Bottom mock lists */}
               <div className="h-[270px] pl-3 pt-4 overflow-auto">
-                <p className="text-black text-center text-xl font-bold">
+                <p className="text-white text-center text-xl font-bold">
                   Line Up, Racers!
                 </p>
-                <strong className="text-black mb-2">Top Engagers</strong>
+                <strong className="text-white mb-2">Top Engagers</strong>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {likers.slice(0, 10).map((l) => (
                     <span
@@ -1122,6 +1121,38 @@ export default function CanvasExample() {
                   ))}
                   {/* One extra span at the end */}
                   {likers.length > 10 && (
+                    <span
+                      style={{
+                        background: "#ff7043",
+                        padding: "2px 6px",
+                        borderRadius: 6,
+                        fontSize: 12,
+                      }}
+                    >
+                      + {likers.length - 10} more
+                    </span>
+                  )}
+                </div>
+
+                <strong className="text-white mt-2 block">
+                  Active Viewers
+                </strong>
+                <div className="mt-2 flex flex-wrap gap-2 overflow-auto">
+                  {viewers.slice(0, 10).map((v) => (
+                    <span
+                      key={v.nickname}
+                      style={{
+                        background: "#90caf9",
+                        padding: "2px 4px",
+                        borderRadius: 6,
+                        fontSize: 12,
+                      }}
+                    >
+                      {v.uniqueId}
+                    </span>
+                  ))}
+                  {/* One extra span at the end */}
+                  {viewers.length > 10 && (
                     <span
                       style={{
                         background: "#ff7043",

@@ -1102,10 +1102,10 @@ export default function CanvasExample() {
 
               {/* Bottom mock lists */}
               <div className="h-[270px] pl-3 pt-4 overflow-auto">
-                <p className="text-black text-center text-xl font-bold">
+                <p className="text-white text-center text-xl font-bold">
                   Line Up, Racers!
                 </p>
-                <strong className="text-black mb-2">Top Engagers</strong>
+                <strong className="text-white mb-2">Top Engagers</strong>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {likers.slice(0, 10).map((l) => (
                     <span
@@ -1122,6 +1122,38 @@ export default function CanvasExample() {
                   ))}
                   {/* One extra span at the end */}
                   {likers.length > 10 && (
+                    <span
+                      style={{
+                        background: "#ff7043",
+                        padding: "2px 6px",
+                        borderRadius: 6,
+                        fontSize: 12,
+                      }}
+                    >
+                      + {likers.length - 10} more
+                    </span>
+                  )}
+                </div>
+
+                <strong className="text-white mt-2 block">
+                  Active Viewers
+                </strong>
+                <div className="mt-2 flex flex-wrap gap-2 overflow-auto">
+                  {viewers.slice(0, 10).map((v) => (
+                    <span
+                      key={v.nickname}
+                      style={{
+                        background: "#90caf9",
+                        padding: "2px 4px",
+                        borderRadius: 6,
+                        fontSize: 12,
+                      }}
+                    >
+                      {v.uniqueId}
+                    </span>
+                  ))}
+                  {/* One extra span at the end */}
+                  {viewers.length > 10 && (
                     <span
                       style={{
                         background: "#ff7043",

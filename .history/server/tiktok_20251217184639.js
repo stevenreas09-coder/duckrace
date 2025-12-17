@@ -43,10 +43,8 @@ io.on("connection", (socket) => {
 
   socket.emit("initial-data", {
     chats,
-    likers: Array.from(likers.entries()).map(([userId, info]) => ({
-      userId, // key from Map
-      nickname: info.nickname, // from Map value
-      avatar: info.avatar, // from Map value
+    likers: Array.from(likers.entries()).map(([username, info]) => ({
+      username,
       likeCount: info.likeCount,
     })),
     viewers: Array.from(viewers.values()),
@@ -81,9 +79,9 @@ connection.on(WebcastEvent.LIKE, (data) => {
   if (!userId) return;
 
   likers.set(userId, {
+    likeCount: data.likeCount,
     nickname: data.user.nickname,
     avatar: data.user.profilePicture?.mUri,
-    likeCount: data.likeCount,
   });
 
   io.emit(
